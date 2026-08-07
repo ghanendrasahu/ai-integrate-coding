@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Autonomous AI Coding Agent</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: "Segoe UI", system-ui, sans-serif;
+    background: #0f172a; color: #e2e8f0; min-height: 100vh;
+  }
+  header { padding: 1rem 1.5rem; border-bottom: 1px solid #1e293b; background: #0b1220; }
+  header h1 { margin: 0; font-size: 1.2rem; letter-spacing: 0.3px; }
+  header p { margin: 0.2rem 0 0; color: #64748b; font-size: 0.8rem; }
+  main { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
+  section { background: #111c31; border: 1px solid #1e293b; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; }
+  h2 { margin: 0 0 1rem; font-size: 1rem; color: #93c5fd; }
+  label { display: block; font-size: 0.8rem; color: #94a3b8; margin: 0.8rem 0 0.25rem; }
+  input[type="text"], textarea, select {
+    width: 100%; padding: 0.55rem 0.7rem; border-radius: 6px;
+    border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 0.9rem;
+  }
+  textarea { font-family: Consolas, monospace; }
+  .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 180px; }
+  .checks { display: flex; gap: 1.25rem; margin-top: 0.9rem; flex-wrap: wrap; }
+  .checks label { display: flex; align-items: center; gap: 0.4rem; margin: 0; color: #cbd5e1; }
+  button {
+    margin-top: 1.25rem; padding: 0.6rem 1.4rem; border: 0; border-radius: 6px;
+    background: #2563eb; color: #fff; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  #log {
+    height: 420px; overflow-y: auto; background: #0b1220; border: 1px solid #1e293b;
+    border-radius: 6px; padding: 0.75rem; font-family: Consolas, monospace; font-size: 0.8rem;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  #status { font-size: 0.85rem; color: #34d399; margin: 0.5rem 0; }
+  #report { margin-top: 0.75rem; }
+  #report pre {
+    background: #0b1220; border: 1px solid #1e293b; border-radius: 6px;
+    padding: 0.75rem; white-space: pre-wrap; font-size: 0.8rem;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Autonomous AI Coding Agent</h1>
+  <p>Configure the agent, launch it, and watch research &rarr; build &rarr; verify &rarr; upgrade live.</p>
+</header>
+<main>
+  <section>
+    <h2>Launch</h2>
+    <label for="task">Task prompt</label>
+    <textarea id="task" rows="3" placeholder="e.g. build a Flask REST API for a task tracker with JWT auth and tests"></textarea>
+    <div class="row">
+      <div>
+        <label for="workdir">Working directory</label>
+        <input type="text" id="workdir" placeholder="(optional, default: ./workspace)">
+      </div>
+      <div>
+        <label for="model">Model</label>
+        <input type="text" id="model" placeholder="(optional, default from config)">
+      </div>
+      <div>
+        <label for="max_steps">Max steps per phase</label>
+        <input type="text" id="max_steps" placeholder="(optional, default: 40)">
+      </div>
+    </div>
+    <div class="checks">
+      <label><input type="checkbox" id="no_browser"> Disable browser research</label>
+      <label><input type="checkbox" id="stream" checked> Stream reasoning</label>
+      <label><input type="checkbox" id="sandbox"> Sandbox commands</label>
+      <label><input type="checkbox" id="interactive"> Interactive</label>
+    </div>
+    <button id="launch">Launch agent</button>
+    <p id="status"></p>
+  </section>
+
+  <section>
+    <h2>Live log</h2>
+    <div id="log"></div>
+    <div id="report" hidden><h2>Final report</h2><pre id="report_body"></pre></div>
+  </section>
+</main>
+
+<script>
+  const logEl = document.getElementById("log");
+  const statusEl = document.getElementById("status");
+  const launchBtn = document.getElementById("launch");
+  const reportEl = document.getElementById("report");
+  const reportBody = document.getElementById("report_body");
+
+  function appendLine(text) {
+    logEl.textContent += text;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  async function launch() {
+    logEl.textContent = "";
+    reportEl.hidden = true;
+    const payload = {
+      task: document.getElementById("task").value,
+      workdir: document.getElementById("workdir").value,
+      model: document.getElementById("model").value,
+      max_steps: document.getElementById("max_steps").value,
+      no_browser: document.getElementById("no_browser").checked,
+      stream: document.getElementById("stream").checked,
+      sandbox: document.getElementById("sandbox").checked,
+      interactive: document.getElementById("interactive").checked,
+    };
+    launchBtn.disabled = true;
+    statusEl.textContent = "Launching agent...";
+    let run_id;
+    try {
+      const res = await fetch("/api/launch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "launch failed");
+      run_id = data.run_id;
+    } catch (err) {
+      statusEl.textContent = "ERROR: " + err.message;
+      launchBtn.disabled = false;
+      return;
+    }
+
+    statusEl.textContent = "Running...";
+    const source = new EventSource(`/api/runs/${run_id}/stream`);
+    source.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.type === "line") {
+        appendLine(msg.text);
+      } else if (msg.type === "done") {
+        statusEl.textContent = "Finished.";
+        appendLine("\n[run finished]");
+        reportBody.textContent = logEl.textContent;
+        reportEl.hidden = false;
+        source.close();
+        launchBtn.disabled = false;
+      }
+    };
+    source.onerror = () => {
+      statusEl.textContent = "Connection to agent closed.";
+      launchBtn.disabled = false;
+    };
+  }
+
+  document.getElementById("launch").addEventListener("click", launch);
+</script>
+</body>
+</html>

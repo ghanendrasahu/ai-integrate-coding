@@ -14,6 +14,7 @@ A self-driving software engineering agent that turns a single task prompt into a
 - [Usage](#usage)
 - [CLI Reference](#cli-reference)
 - [Examples](#examples)
+- [Web Frontend](#web-frontend)
 - [Project Structure](#project-structure)
 - [Tool Reference](#tool-reference)
 - [How to Extend](#how-to-extend)
@@ -40,6 +41,7 @@ A self-driving software engineering agent that turns a single task prompt into a
 - **Human review gates** — optional checkpoints between phases (`--review-gates`) where you can continue, skip the rest, or abort.
 - **CI-ready output** — generated projects are instructed to include a GitHub Actions CI workflow with install/lint/test steps.
 - **Installable package** — works as `python main.py`, `python -m agent`, or the installed `autonomous-agent` command.
+- **Web frontend** — an optional Flask UI in `frontend/` to configure, launch, and live-stream agent runs over Server-Sent Events.
 - **Ground-truth code, not guesses** — versions, APIs, and best practices come from live research instead of the model's memory.
 - **Self-verifying** — runs installs, builds, lints, tests, and actually starts the application, reading the full output and fixing every error it finds.
 - **Self-upgrading** — critiques its own work (performance, security, correctness, maintainability, tests, deployment) and iterates until the result is production-grade.
@@ -273,6 +275,28 @@ python main.py --workdir C:\Users\me\projects\my-app "audit this project, fix al
 python main.py "build a python script that downloads stock prices and generates a matplotlib report, with unit tests"
 ```
 
+## Web Frontend
+
+An optional Flask web UI (`frontend/`) lets you configure and launch the agent from a browser and watch its output live.
+
+```bash
+cd frontend
+pip install -r requirements.txt
+python app.py
+```
+
+Open http://localhost:5000, enter a task, pick options (working directory, model, browser, streaming, sandbox, interactive), and press **Launch agent**. The run streams over Server-Sent Events and the captured output is shown as the final report.
+
+Configurable via environment variables:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `FLASK_HOST` | `127.0.0.1` | Interface the frontend binds to. |
+| `FLASK_PORT` | `5000` | Port the frontend listens on. |
+| `FLASK_DEBUG` | *(off)* | Set to `1` to enable Flask debug mode. |
+
+The agent subprocess runs from the repository root, so it uses the same `.env` / `agent.toml` and LLM backend as the CLI.
+
 ## Project Structure
 
 ```
@@ -295,6 +319,11 @@ python main.py "build a python script that downloads stock prices and generates 
 │   ├── llm.py               Provider-agnostic LLM client with tool calling
 │   ├── retrieval.py         RAG retriever: dense embeddings (OpenAI/Ollama) with TF-IDF fallback
 │   └── tools.py             Tool schemas and executor (web, file, shell, notes, finish, sandbox)
+├── frontend/
+│   ├── app.py               Flask web UI: configure, launch, and live-stream agent runs (SSE)
+│   ├── templates/index.html Browser UI for launching and monitoring a run
+│   ├── tests/test_app.py    Frontend API and streaming tests
+│   └── README.md            Frontend setup and usage
 └── tests/
     ├── fakes.py             Scripted fake LLM used to test the phase loop offline
     ├── test_agent.py        End-to-end phase loop tests (no API key needed)
@@ -367,7 +396,7 @@ Syntax check:
 python -m py_compile main.py agent\*.py
 ```
 
-Current status: **44 tests passing**, **0 type errors / 0 warnings**.
+Current status: **49 tests passing** (44 core + 5 frontend), **0 type errors / 0 warnings**.
 
 ## Troubleshooting
 
