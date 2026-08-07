@@ -42,7 +42,9 @@ PHASES = {
     "research": """PHASE: RESEARCH
 
 Derive the list of relevant questions from the task and answer them by researching the web
-with Chrome (web_search / web_open). Cover at minimum: correct frameworks/libraries, current
+with Chrome (web_search / web_open). Also cross-check answers by asking multiple browser-based
+AI assistants (ChatGPT, Gemini, etc.) with the ask_web tool and prefer the best answer it returns.
+Cover at minimum: correct frameworks/libraries, current
 stable versions, exact APIs and code signatures, project structure conventions, security and
 configuration best practices, and known pitfalls.
 

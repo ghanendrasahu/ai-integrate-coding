@@ -4,6 +4,7 @@ import subprocess
 import threading
 
 from .browser import Browser
+from .weblm import WebAI
 
 TOOL_SCHEMAS = [
     {
@@ -30,6 +31,18 @@ TOOL_SCHEMAS = [
                 "type": "object",
                 "properties": {"url": {"type": "string", "description": "The absolute URL to open."}},
                 "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "ask_web",
+            "description": "Ask multiple browser-based AI assistants (ChatGPT, Gemini, and others from WEB_AI_PROVIDERS) a question in the browser, and return the best answer. Use for cross-checking APIs, code solutions, and best practices before building. Requires the user to be logged into those services in the shared web_ai_profile.",
+            "parameters": {
+                "type": "object",
+                "properties": {"prompt": {"type": "string", "description": "The question to ask the AI assistants."}},
+                "required": ["prompt"],
             },
         },
     },
@@ -192,6 +205,8 @@ class ToolExecutor:
         self._browser_thread = threading.local()
         self._browsers: list[Browser] = []
         self._browsers_lock = threading.Lock()
+        self._web_ai: WebAI | None = None
+        self._web_ai_lock = threading.Lock()
 
     def _load_notes(self) -> list[str]:
         try:
@@ -221,7 +236,32 @@ class ToolExecutor:
             self._browser_thread.browser = browser
         return browser
 
+    def _web_ai_instance(self) -> WebAI | None:
+        if not self.use_browser:
+            return None
+        with self._web_ai_lock:
+            if self._web_ai is None:
+                self._web_ai = WebAI(self.workdir, headless=self.headless)
+        return self._web_ai
+
+    def _exec_ask_web(self, args: dict) -> str:
+        web_ai = self._web_ai_instance()
+        if web_ai is None:
+            return "ERROR: browser is disabled, ask_web is unavailable."
+        if not web_ai.providers:
+            return "ERROR: no web AI providers configured (WEB_AI_PROVIDERS)."
+        best, answers = web_ai.best(str(args.get("prompt", "")))
+        origin = ", ".join(f"{name} ({'ok' if '[' not in text[:20] else 'failed'})" for name, text in answers)
+        return self._trim(f"BEST ANSWER (from {origin}):\n{best}")
+
     def close(self) -> None:
+        with self._web_ai_lock:
+            web_ai, self._web_ai = self._web_ai, None
+        if web_ai is not None:
+            try:
+                web_ai.close()
+            except Exception:
+                pass
         with self._browsers_lock:
             browsers, self._browsers = self._browsers, []
         for browser in browsers:

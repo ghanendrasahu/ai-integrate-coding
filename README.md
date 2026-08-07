@@ -37,6 +37,7 @@ A self-driving software engineering agent that turns a single task prompt into a
 - **Sandboxed command execution** — `--sandbox` blocks destructive shell commands (denylist) and confines file tools to the working directory; when Docker is available it runs commands inside an isolated container (`AGENT_SANDBOX_IMAGE`).
 - **Conversation summarization** — when the conversation hits its message cap, older context is compressed by the LLM into a summary instead of being dropped, preserving decisions across long phases.
 - **Persistent run history** — every run writes a queryable JSONL timeline (`runs/*.jsonl`) of tool calls, phases, and the final report; the web frontend lists past runs and lets you reopen any timeline for cross-project planning.
+- **Multi-app in-browser AI sourcing** — the `ask_web` tool asks several browser-based AI assistants (ChatGPT, Gemini, and more via `WEB_AI_PROVIDERS`) in a persistent Chrome profile, scores the replies (code quality, length, relevance), and returns the best answer to inform building.
 - **Config file + `.env`** — settings load from `agent.toml`, `.env`, and environment variables, with CLI flags taking precedence (see [Configuration](#configuration)).
 - **Run log** — every run is teed to `agent_run.log` in the working directory for debugging.
 - **Human review gates** — optional checkpoints between phases (`--review-gates`) where you can continue, skip the rest, or abort.
@@ -136,6 +137,7 @@ All configuration is provided through environment variables. **No secrets are ha
 | `OLLAMA_BASE` | `http://localhost:11434/v1` | URL of a local Ollama server. |
 | `AGENT_EMBED_MODEL` | `text-embedding-3-small` | Embedding model for RAG retrieval (OpenAI) or `nomic-embed-text` (Ollama). |
 | `AGENT_SANDBOX_IMAGE` | `python:3.11-slim` | Docker image used for sandboxed command execution. |
+| `WEB_AI_PROVIDERS` | `chatgpt,gemini` | Comma-separated browser-based AI assistants queried by the `ask_web` tool. |
 
 ### OpenAI
 
@@ -298,6 +300,19 @@ Configurable via environment variables:
 
 The agent subprocess runs from the repository root, so it uses the same `.env` / `agent.toml` and LLM backend as the CLI. Completed runs are recorded under `<workdir>/runs/*.jsonl` and appear in the **Run history** panel, where you can reopen any run's timeline and final report.
 
+### Browser-based AI assistants (`ask_web`)
+
+To let the agent draw on ChatGPT, Gemini, and other web apps from Chrome, log into those services once in the shared profile it manages. Run a first headful session so the sessions persist:
+
+```bash
+cd frontend
+python app.py
+# launch once with the browser visible, sign into chatgpt.com and gemini.google.com,
+# then the persisted web_ai_profile is reused across all runs.
+```
+
+Tune which services are queried with `WEB_AI_PROVIDERS` (e.g. `WEB_AI_PROVIDERS=chatgpt,gemini`). The `ask_web` tool asks each, picks the best reply by a code/relevance/length score, and feeds it to the research phase.
+
 ## Project Structure
 
 ```
@@ -317,6 +332,7 @@ The agent subprocess runs from the repository root, so it uses the same `.env` /
 │   ├── history.py           JSONL run-history timeline recorder
 │   ├── llm.py               Provider-agnostic LLM client with tool calling
 │   ├── retrieval.py         RAG retriever: dense embeddings (OpenAI/Ollama) with TF-IDF fallback
+│   ├── weblm.py             Multi-app in-browser AI aggregator (ChatGPT/Gemini, best-answer scoring)
 │   └── tools.py             Tool schemas and executor (web, file, shell, notes, finish, sandbox)
 ├── frontend/
 │   ├── app.py               Flask web UI: configure, launch, and live-stream agent runs (SSE)
@@ -341,6 +357,7 @@ The LLM can call the following tools during any phase:
 | --- | --- |
 | `web_search` | Search the web using Chrome; returns titles, URLs, and snippets. |
 | `web_open` | Open a specific URL in Chrome and return its readable text. |
+| `ask_web` | Ask multiple browser-based AI assistants (ChatGPT, Gemini, ...) and return the best answer. |
 | `append_note` | Save one research finding into the persistent knowledge base (RAG notes), keyed by task. |
 | `list_dir` | List files in a directory. |
 | `read_file` | Read a text file. |
@@ -395,7 +412,7 @@ Syntax check:
 python -m py_compile main.py agent\*.py
 ```
 
-Current status: **57 tests passing** (49 core + 8 frontend), **0 type errors / 0 warnings**.
+Current status: **64 tests passing** (56 core + 8 frontend), **0 type errors / 0 warnings**.
 
 ## Troubleshooting
 

@@ -38,6 +38,11 @@ def test_append_note_disabled_browser(tmp_path):
     assert "disabled" in ex.execute("web_search", {"query": "x"}).lower()
 
 
+def test_ask_web_disabled_browser(tmp_path):
+    ex = ToolExecutor(str(tmp_path), False, False)
+    assert "disabled" in ex.execute("ask_web", {"prompt": "how to build an api"}).lower()
+
+
 def test_ask_user_disabled(executor):
     assert "disabled" in executor.execute("ask_user", {"question": "anything?"})
 
