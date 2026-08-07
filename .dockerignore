@@ -1,0 +1,11 @@
+.git
+.env
+.pytest_cache
+__pycache__
+*.pyc
+.venv
+venv
+workspace
+web_ai_profile
+agent.toml
+.vscode

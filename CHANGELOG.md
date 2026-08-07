@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here. Released versions correspond to git tags.
 
+## [0.7.0] - 2026-08-07
+
+### Added
+
+- **Docker packaging** to run the agent and its web frontend without any local Python or Playwright install:
+  - `Dockerfile` built on `python:3.12-slim-bookworm` with bundled Chromium (`playwright install --with-deps chromium`) and Flask.
+  - `docker-compose.yml` with two services:
+    - `web` (default, `docker compose up`) — the control-plane frontend at `http://localhost:5000`.
+    - `cli` (`docker compose run --rm cli "<task>"`) — one-shot command-line control.
+  - Live code is bind-mounted for zero-rebuild iteration; `--sandbox` host-Docker-socket passthrough documented as an (explicitly security-guarded) comment.
+  - `flask>=3.0.0` promoted into `requirements.txt` so the image (and any env) can run the frontend.
+  - README "Run with Docker (easiest)" quick-start section and project-tree entries.
+
+### Verified
+
+- Image builds clean; containerized CLI `--help` and containerized frontend serve HTTP 200; headless Chromium inside the container launches and loads a live page.
+
 ## [0.6.1] - 2026-08-07
 
 ### Changed

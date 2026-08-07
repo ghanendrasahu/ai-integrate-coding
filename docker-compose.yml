@@ -1,0 +1,42 @@
+# Containerized run for the AI Intigrate Coding agent.
+#
+# Frontend (web UI, control every run in-browser):
+#   docker compose up --build
+#   open http://localhost:5000
+#
+# CLI (direct terminal control of a single task):
+#   docker compose run --rm cli "build a Flask REST API for a task tracker"
+#
+# Live code is bind-mounted, so edits are picked up without rebuilding (except
+# Python package or Playwright changes, which need `docker compose build`).
+services:
+  web:
+    build: .
+    container_name: ai-agent-web
+    restart: unless-stopped
+    environment:
+      # Frontend binds to 0.0.0.0 by default (set in the image); override here if needed.
+      FLASK_HOST: 0.0.0.0
+      FLASK_PORT: "5000"
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    # Optional: expose the host Docker socket so `--sandbox` can spawn command
+    # containers. SECURITY WARNING: grants the container root-equivalent access
+    # to the host; only enable if you trust the tasks you run.
+    # - /var/run/docker.sock:/var/run/docker.sock
+
+  cli:
+    build: .
+    container_name: ai-agent-cli
+    profiles: ["tools"]
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    # Optional dyno-docker socket for `--sandbox` isolation (see warning above).
+    # - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint: ["python", "main.py"]

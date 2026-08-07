@@ -198,9 +198,27 @@ Precedence (highest wins): **CLI flags > environment variables > `agent.toml` > 
 
 ## Usage
 
-### Quick start
+### Run with Docker (easiest)
+
+No local Python or Playwright install needed. Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) (already tested with Docker 29.x + Compose v2). Set your API key in `.env` first (see [Configuration](#configuration)).
 
 ```bash
+# 1. Web frontend (control every run in-browser) at http://localhost:5000
+docker compose up --build
+
+# 2. CLI (direct terminal control of a single task)
+docker compose run --rm cli "build a Flask REST API for a task tracker with JWT auth"
+```
+
+- Live code is bind-mounted, so edits are picked up without rebuilding — except changes to Python packages or Playwright, which need `docker compose build`.
+- Chromium is bundled in the image, so the browser research / web-sourcing tools work out of the box.
+- The optional `--sandbox` Docker isolation needs the host Docker socket exposed (see the commented lines in `docker-compose.yml`). Only enable it if you trust the tasks you run.
+
+### Quick start (local, without Docker)
+
+```bash
+pip install -r requirements.txt
+python -m playwright install chromium
 python main.py "build a Flask REST API for a task tracker with JWT auth and tests"
 ```
 
@@ -322,6 +340,9 @@ Tune which services are queried with `WEB_AI_PROVIDERS` (e.g. `WEB_AI_PROVIDERS=
 ├── requirements-dev.txt     Development dependencies (pytest, pyright)
 ├── pyproject.toml           Packaging + tool configuration (pytest, pyright)
 ├── CHANGELOG.md             Release history
+├── Dockerfile               Single image: agent + frontend + Chromium, Flask included
+├── docker-compose.yml       `web` (frontend) + `cli` services, live code-mount
+├── .dockerignore            Files excluded from the image build
 ├── .gitignore
 ├── agent/
 │   ├── __init__.py          Package exports
