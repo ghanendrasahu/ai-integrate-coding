@@ -160,19 +160,19 @@ set AGENT_MODEL=qwen2.5-coder:14b
 
 ### Using a `.env` file
 
-Instead of setting shell variables every time, copy `.env.example` to `.env` and fill it in. Values are loaded automatically on startup:
+Instead of setting shell variables every time, create a `.env` file in the project root with the variables from the table above (fill in your key):
 
 ```bash
-copy .env.example .env
-# edit .env, then just run the agent
-python main.py "..."
+AGENT_API_KEY=sk-...
+AGENT_API_BASE=https://api.groq.com/openai/v1
+AGENT_MODEL=llama-3.3-70b-versatile
 ```
 
-> `.env` is gitignored and never committed. Only `.env.example` (the template) is tracked.
+Values are loaded automatically on startup. `.env` is gitignored and never committed.
 
 ### Using `agent.toml`
 
-Copy `agent.toml.example` to `agent.toml` for file-based configuration:
+For file-based configuration, create an `agent.toml` (gitignored):
 
 ```toml
 [agent]
@@ -305,10 +305,7 @@ The agent subprocess runs from the repository root, so it uses the same `.env` /
 ├── requirements.txt         Runtime dependencies
 ├── requirements-dev.txt     Development dependencies (pytest, pyright)
 ├── pyproject.toml           Packaging + tool configuration (pytest, pyright)
-├── .env.example             Environment variable template
-├── agent.toml.example       File-based configuration template
 ├── .gitignore
-├── .vscode/settings.json    Local editor settings (not committed)
 ├── agent/
 │   ├── __init__.py          Package exports
 │   ├── __main__.py          `python -m agent` entry point
@@ -403,7 +400,7 @@ Current status: **49 tests passing** (44 core + 5 frontend), **0 type errors / 0
 | Problem | Solution |
 | --- | --- |
 | `No LLM backend configured` | Set `AGENT_API_KEY`, add it to `.env`, or set `AGENT_PROVIDER=ollama` with Ollama running. |
-| `playwright` / `openai` import not resolved in the editor | Install `requirements.txt` in the interpreter your editor uses, or point Pylance at it via `.vscode/settings.json`. |
+| `playwright` / `openai` import not resolved in the editor | Install `requirements.txt` in the interpreter your editor uses. |
 | `rm` / `del` destructive flags | Blocked by the sandbox denylist. |
 | `Executable doesn't exist` / Chrome launch failure | Install Chrome, or run `playwright install chromium` for the fallback browser. |
 | `Ask the user is disabled` | Run with `--interactive`. |
