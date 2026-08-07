@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Released versions correspond to git tags.
 
+## [0.7.2] - 2026-08-07
+
+### Added
+
+- `make.ps1` PowerShell wrapper mirroring the Makefile so `up` / `down` / `build` / `logs` / `shell` / `cli "<task>"` / `setup` / `test` / `lint` / `clean` work directly on Windows without `make` installed.
+- README: shortcut usage split into PowerShell (`.\make.ps1 …`) and Git Bash / WSL / macOS (`make …`) variants.
+
 ## [0.7.1] - 2026-08-07
 
 ### Added

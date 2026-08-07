@@ -214,9 +214,19 @@ docker compose run --rm cli "build a Flask REST API for a task tracker with JWT 
 - Chromium is bundled in the image, so the browser research / web-sourcing tools work out of the box.
 - The optional `--sandbox` Docker isolation needs the host Docker socket exposed (see the commented lines in `docker-compose.yml`). Only enable it if you trust the tasks you run.
 
-### Command shortcuts (`Makefile`)
+### Command shortcuts
 
-Requires `make` (bundled with Git for Windows, WSL, and every Linux/macOS). All targets also work as a plain Docker or pytest command — the Makefile is just shorthand.
+On **Windows PowerShell** (no `make` needed), use the included `make.ps1`, which mirrors the Makefile:
+
+```powershell
+.\make.ps1 up                    # start the web frontend at http://localhost:5000
+.\make.ps1 cli "build a REST API"     # run one task via the containerized agent
+.\make.ps1 logs                  # tail the frontend logs
+.\make.ps1 down                  # stop everything
+.\make.ps1 setup / test / lint / clean   # local (non-Docker) workflows
+```
+
+On **Git Bash / WSL / Linux / macOS** the `Makefile` provides the same targets:
 
 ```bash
 make up                    # start the web frontend at http://localhost:5000
@@ -231,7 +241,7 @@ make lint                  # pyright type-check
 make clean                 # remove Python caches
 ```
 
-`make test` and `make lint` auto-use `.venv/Scripts/python` when present. The repository also ships a GitHub Actions workflow (`.github/workflows/ci.yml`) that installs deps + Chromium and runs the full suite on every push/PR.
+Both `test`/`lint` auto-use `.venv/Scripts/python` when present. The repository also ships a GitHub Actions workflow (`.github/workflows/ci.yml`) that installs deps + Chromium and runs the full suite on every push/PR.
 
 ### Quick start (local, without Docker)
 
@@ -361,7 +371,8 @@ Tune which services are queried with `WEB_AI_PROVIDERS` (e.g. `WEB_AI_PROVIDERS=
 ├── CHANGELOG.md             Release history
 ├── Dockerfile               Single image: agent + frontend + Chromium, Flask included
 ├── docker-compose.yml       `web` (frontend) + `cli` services, live code-mount
-├── Makefile                 Convenience shortcuts (up / cli / test / lint / clean)
+├── Makefile                 Make shortcuts (up / cli / test / lint / clean) for Git Bash, WSL, macOS, Linux
+├── make.ps1                 Same shortcuts for Windows PowerShell (no `make` needed)
 ├── .dockerignore            Files excluded from the image build
 ├── .github/workflows/ci.yml CI: full test suite on every push / PR
 ├── .gitignore
