@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Released versions correspond to git tags.
 
+## [0.7.4] - 2026-08-07
+
+### Added
+
+- `LICENSE` (MIT) and a matching README badge/tree entry, making the repo open to reuse by anyone with attribution.
+
 ## [0.7.3] - 2026-08-07
 
 ### Added

@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/ghanendrasahu/AI_Intigrate_Coding/actions/workflows/ci.yml/badge.svg)](https://github.com/ghanendrasahu/AI_Intigrate_Coding/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A self-driving software engineering agent that turns a single task prompt into a **production-grade project**. It researches the web using real Chrome automation (RAG-style grounding), builds the project from those researched facts, verifies it by running real commands, and keeps upgrading it until it is genuinely production-ready — with no human in the loop.
 
@@ -379,6 +380,7 @@ Tune which services are queried with `WEB_AI_PROVIDERS` (e.g. `WEB_AI_PROVIDERS=
 ├── .dockerignore            Files excluded from the image build
 ├── .github/workflows/ci.yml CI: tests + Docker build on every push / PR
 ├── .env.example              Config template (copy to `.env` and fill in)
+├── LICENSE                   MIT License
 ├── .gitignore
 ├── agent/
 │   ├── __init__.py          Package exports
