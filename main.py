@@ -2,10 +2,13 @@ import argparse
 import os
 import sys
 
+from dotenv import load_dotenv
+
 from agent import Agent
 
 
 def main() -> int:
+    load_dotenv()
     for stream in (sys.stdout, sys.stderr):
         reconfigure = getattr(stream, "reconfigure", None)
         if reconfigure is not None:

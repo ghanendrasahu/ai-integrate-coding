@@ -1,6 +1,9 @@
 import os
 
+from dotenv import load_dotenv
 from openai import OpenAI
+
+load_dotenv()
 
 DEFAULT_MODEL = os.getenv("AGENT_MODEL", "gpt-4o")
 OLLAMA_BASE = os.getenv("OLLAMA_BASE", "http://localhost:11434/v1")

@@ -29,6 +29,8 @@ A self-driving software engineering agent that turns a single task prompt into a
 
 - **Autonomous workflow** — Research → Build → Verify → Upgrade, with no manual steps in between.
 - **Chrome as a RAG knowledge base** — the agent asks itself the relevant questions from your prompt, searches the web in a real Chrome browser, reads pages, and stores the findings as persistent research notes that feed every later decision.
+- **Persistent project memory** — research notes are saved to `research_notes.md` in the working directory, so interrupted runs resume without redoing research.
+- **`.env` configuration** — provider settings load from a `.env` file automatically (see [Configuration](#configuration)).
 - **Ground-truth code, not guesses** — versions, APIs, and best practices come from live research instead of the model's memory.
 - **Self-verifying** — runs installs, builds, lints, tests, and actually starts the application, reading the full output and fixing every error it finds.
 - **Self-upgrading** — critiques its own work (performance, security, correctness, maintainability, tests, deployment) and iterates until the result is production-grade.
@@ -128,6 +130,18 @@ set AGENT_PROVIDER=ollama
 set AGENT_MODEL=qwen2.5-coder:14b
 ```
 
+### Using a `.env` file
+
+Instead of setting shell variables every time, copy `.env.example` to `.env` and fill it in. Values are loaded automatically on startup:
+
+```bash
+copy .env.example .env
+# edit .env, then just run the agent
+python main.py "..."
+```
+
+> `.env` is gitignored and never committed. Only `.env.example` (the template) is tracked.
+
 ## Usage
 
 ### Quick start
@@ -197,14 +211,22 @@ python main.py "build a python script that downloads stock prices and generates 
 .
 ├── main.py                  CLI entry point
 ├── requirements.txt         Python dependencies
+├── requirements-dev.txt     Development dependencies (pytest, pyright)
+├── pyproject.toml           Tool configuration (pytest, pyright)
+├── .env.example             Environment variable template
 ├── .gitignore
 ├── .vscode/settings.json    Local editor settings (not committed)
-└── agent/
-    ├── __init__.py          Package exports
-    ├── agent.py             Orchestrator: research → build → verify → upgrade loop
-    ├── browser.py           Chrome automation for web search and page extraction (RAG)
-    ├── llm.py               Provider-agnostic LLM client with tool calling
-    └── tools.py             Tool schemas and executor (web, file, shell, notes, finish)
+├── agent/
+│   ├── __init__.py          Package exports
+│   ├── agent.py             Orchestrator: research → build → verify → upgrade loop
+│   ├── browser.py           Chrome automation for web search and page extraction (RAG)
+│   ├── llm.py               Provider-agnostic LLM client with tool calling
+│   └── tools.py             Tool schemas and executor (web, file, shell, notes, finish)
+└── tests/
+    ├── fakes.py             Scripted fake LLM used to test the phase loop offline
+    ├── test_tools.py        Tool executor tests (files, shell, notes persistence)
+    ├── test_browser.py      Chrome/Playwright search and extraction tests
+    └── test_agent.py        End-to-end phase loop tests (no API key needed)
 ```
 
 ## Tool Reference
@@ -238,11 +260,24 @@ The LLM can call the following tools during any phase:
 
 ## Verification & Testing
 
+Install the dev dependencies:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+Run the test suite:
+
+```bash
+python -m pytest
+```
+
+> The suite includes an offline end-to-end test of the phase loop using a scripted fake LLM — no API key or Chrome needed. Browser tests are skipped automatically if Chrome or the network is unavailable.
+
 Static type checking (matches Pylance):
 
 ```bash
-pip install pyright
-pyright main.py agent
+pyright main.py agent tests
 ```
 
 Syntax check:
@@ -251,13 +286,7 @@ Syntax check:
 python -m py_compile main.py agent\*.py
 ```
 
-Smoke check:
-
-```bash
-python main.py --help
-```
-
-The type checker currently reports **0 errors / 0 warnings**.
+Current status: **14 tests passing**, **0 type errors / 0 warnings**.
 
 ## Troubleshooting
 
@@ -273,14 +302,14 @@ The type checker currently reports **0 errors / 0 warnings**.
 
 The following are planned or under consideration:
 
-- **Playwright browser fallback** — automatic use of bundled Chromium when Chrome is missing.
 - **Vector-based RAG** — embed research notes and retrieve semantically instead of injecting all notes.
-- **Persistent project memory** — reuse research notes across runs for the same project.
 - **Parallel tool execution** — run independent commands and research queries concurrently.
-- **Config file support** — a `agent.toml`/`.env` file as an alternative to environment variables.
+- **Conversation summarization** — compress old tool results with the LLM instead of dropping them at the message cap.
+- **Config file support** — a `agent.toml` file as an alternative to environment variables.
 - **CI/CD output** — generate GitHub Actions workflows for generated projects.
 - **Human-in-the-loop review gates** — optional approval checkpoints between phases.
-- **Formal test suite** — migrate the internal smoke tests into the repository as `pytest` tests.
+- **Packaging** — installable via `pyproject.toml` with a `python -m` entry point.
+- **Run log file** — tee the agent's output to `agent_run.log` for debugging.
 
 ## Contributing
 

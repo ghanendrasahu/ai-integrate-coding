@@ -131,7 +131,23 @@ class ToolExecutor:
         self.workdir = workdir
         self.browser = browser
         self.interactive = interactive
-        self.notes: list[str] = []
+        self.notes_path = os.path.join(workdir, "research_notes.md")
+        self.notes: list[str] = self._load_notes()
+
+    def _load_notes(self) -> list[str]:
+        try:
+            with open(self.notes_path, "r", encoding="utf-8") as fh:
+                return [line.strip()[2:] for line in fh if line.startswith("- ")]
+        except OSError:
+            return []
+
+    def _save_notes(self) -> None:
+        try:
+            with open(self.notes_path, "w", encoding="utf-8") as fh:
+                for note in self.notes:
+                    fh.write(f"- {note}\n")
+        except OSError:
+            pass
 
     def execute(self, name: str, args: dict) -> str:
         handler = getattr(self, f"_exec_{name}", None)
@@ -176,6 +192,7 @@ class ToolExecutor:
 
     def _exec_append_note(self, args: dict) -> str:
         self.notes.append(str(args["note"]))
+        self._save_notes()
         return f"Note saved. Total notes: {len(self.notes)}"
 
     def _exec_list_dir(self, args: dict) -> str:
