@@ -104,6 +104,19 @@ def best_answer(answers: list[tuple[str, str]]) -> str:
     return max(answers, key=lambda item: _score(item[1], vocabulary))[1]
 
 
+def format_answers(answers: list[tuple[str, str]]) -> str:
+    if not answers:
+        return "No answers received from any provider."
+    chosen = best_answer(answers)
+    parts = ["BEST ANSWER:", chosen, "", "ALL ANSWERS BY PROVIDER:"]
+    for name, text in answers:
+        is_best = text == chosen
+        marker = " [CHOSEN]" if is_best else ""
+        parts.append(f"--- {name}{marker} ---")
+        parts.append(_trim_answer(text)[:1600])
+    return "\n".join(parts)
+
+
 class WebAI:
     def __init__(
         self,

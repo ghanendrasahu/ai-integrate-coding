@@ -35,3 +35,4 @@ workspace/
 agent.toml
 *.log
 research_notes/
+web_ai_profile/

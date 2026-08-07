@@ -321,6 +321,7 @@ Tune which services are queried with `WEB_AI_PROVIDERS` (e.g. `WEB_AI_PROVIDERS=
 ├── requirements.txt         Runtime dependencies
 ├── requirements-dev.txt     Development dependencies (pytest, pyright)
 ├── pyproject.toml           Packaging + tool configuration (pytest, pyright)
+├── CHANGELOG.md             Release history
 ├── .gitignore
 ├── agent/
 │   ├── __init__.py          Package exports
@@ -412,7 +413,7 @@ Syntax check:
 python -m py_compile main.py agent\*.py
 ```
 
-Current status: **64 tests passing** (56 core + 8 frontend), **0 type errors / 0 warnings**.
+Current status: **66 tests passing** (58 core + 8 frontend), **0 type errors / 0 warnings**.
 
 ## Troubleshooting
 

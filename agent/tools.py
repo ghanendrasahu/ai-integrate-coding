@@ -4,7 +4,7 @@ import subprocess
 import threading
 
 from .browser import Browser
-from .weblm import WebAI
+from .weblm import WebAI, format_answers
 
 TOOL_SCHEMAS = [
     {
@@ -250,9 +250,8 @@ class ToolExecutor:
             return "ERROR: browser is disabled, ask_web is unavailable."
         if not web_ai.providers:
             return "ERROR: no web AI providers configured (WEB_AI_PROVIDERS)."
-        best, answers = web_ai.best(str(args.get("prompt", "")))
-        origin = ", ".join(f"{name} ({'ok' if '[' not in text[:20] else 'failed'})" for name, text in answers)
-        return self._trim(f"BEST ANSWER (from {origin}):\n{best}")
+        answers = web_ai.ask_all(str(args.get("prompt", "")))
+        return self._trim(format_answers(answers))
 
     def close(self) -> None:
         with self._web_ai_lock:

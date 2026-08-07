@@ -1,4 +1,4 @@
-from agent.weblm import WebAI, best_answer, _score, _trim_answer
+from agent.weblm import WebAI, best_answer, format_answers, _score, _trim_answer
 
 
 def test_best_answer_picks_code_rich_reply():
@@ -40,3 +40,20 @@ def test_trim_answer_caps_length():
 def test_providers_filtered():
     web_ai = WebAI("", providers=["chatgpt", "does_not_exist"])
     assert web_ai.providers == ["chatgpt"]
+
+
+def test_format_answers_shows_best_and_all_providers():
+    answers = [
+        ("chatgpt", "vague no code"),
+        ("gemini", "real answer ```python\nx=1\n``` details"),
+    ]
+    out = format_answers(answers)
+    assert "BEST ANSWER:" in out
+    assert "ALL ANSWERS BY PROVIDER:" in out
+    assert "[CHOSEN]" in out
+    assert "--- chatgpt ---" in out
+    assert "--- gemini" in out
+
+
+def test_format_answers_empty():
+    assert "No answers" in format_answers([])
