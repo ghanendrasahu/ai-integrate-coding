@@ -8,6 +8,8 @@ from typing import Protocol
 
 _TOKEN_RE = re.compile(r"[a-z0-9_]+")
 
+_EMBED_CACHE: dict[str, list[float]] = {}
+
 
 def _tokens(text: str) -> list[str]:
     return _TOKEN_RE.findall(text.lower())
@@ -30,7 +32,7 @@ class OpenAIEmbedder:
             base_url=os.getenv("AGENT_API_BASE") or None,
         )
         self.model = model or os.getenv("AGENT_EMBED_MODEL", "text-embedding-3-small")
-        self._cache: dict[str, list[float]] = {}
+        self._cache: dict[str, list[float]] = _EMBED_CACHE
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         missing = [text for text in texts if text not in self._cache]
@@ -45,7 +47,7 @@ class OllamaEmbedder:
     def __init__(self, model: str | None = None, base: str = "http://localhost:11434"):
         self.model = model or os.getenv("AGENT_EMBED_MODEL", "nomic-embed-text")
         self.base = base.rstrip("/")
-        self._cache: dict[str, list[float]] = {}
+        self._cache: dict[str, list[float]] = _EMBED_CACHE
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         for text in texts:

@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Released versions correspond to git tags.
 
+## [0.6.1] - 2026-08-07
+
+### Changed
+
+- Embeddings are now cached **across** retriever builds (OpenAI and Ollama embedders share one process-wide cache), and the `Agent` reuses an unchanged retriever instead of rebuilding it each step. Notes are only re-embedded when they change, eliminating redundant embedding API calls and latency on every research step once the retrieval threshold is crossed.
+- Added `RetrieverProtocol` import to `agent.py` required by the retriever reuse.
+
 ## [0.6.0] - 2026-08-07
 
 ### Changed

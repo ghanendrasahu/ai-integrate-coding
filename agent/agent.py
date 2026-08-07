@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from .history import RunHistory
 from .llm import LLMClient
-from .retrieval import build_retriever
+from .retrieval import RetrieverProtocol, build_retriever
 from .tools import TOOL_SCHEMAS, ToolExecutor
 
 SYSTEM_BASE = """You are an autonomous production-grade software engineering agent.
@@ -132,6 +132,8 @@ class Agent:
         )
         self.history = RunHistory(self.workdir, task)
         self.llm = LLMClient(model=model)
+        self._retriever: RetrieverProtocol | None = None
+        self._retriever_notes: tuple[str, ...] = ()
 
     def _system(self, phase: str) -> str:
         notes = self.executor.notes
@@ -139,7 +141,11 @@ class Agent:
             if len(notes) <= RETRIEVAL_K + RECENT_NOTES:
                 selected = notes
             else:
-                top = build_retriever(notes).search(f"{self.task} {phase}", k=RETRIEVAL_K)
+                if tuple(notes) != self._retriever_notes:
+                    self._retriever_notes = tuple(notes)
+                    self._retriever = build_retriever(notes)
+                assert self._retriever is not None
+                top = self._retriever.search(f"{self.task} {phase}", k=RETRIEVAL_K)
                 selected = list(dict.fromkeys(top + notes[-RECENT_NOTES:]))
             rendered = "\n".join(f"- {n}" for n in selected)
         else:
