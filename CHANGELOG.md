@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Released versions correspond to git tags.
 
+## [0.8.1] - 2026-08-07
+
+### Fixed
+
+- CD publish failed on `ghcr.io` because the repository name contains uppercase letters (container registries require lowercase). The workflow now uses `docker/metadata-action` output for tags, which lowercases the image name, so releases push correctly. Also upgraded the Docker Actions to current majors.
+
 ## [0.8.0] - 2026-08-07
 
 ### Added
