@@ -1,6 +1,6 @@
 # Autonomous AI Coding Agent
 
-[![CI](https://github.com/ghanendrasahu/AI_Intigrate_Coding/actions/workflows/ci.yml/badge.svg)](https://github.com/ghanendrasahu/AI_Intigrate_Coding/actions/workflows/ci.yml)
+[![CI](https://github.com/ghanendrasahu/ai_intigrate_coding/actions/workflows/ci.yml/badge.svg)](https://github.com/ghanendrasahu/ai_intigrate_coding/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 

@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Released versions correspond to git tags.
 
+## [0.8.2] - 2026-08-07
+
+### Changed
+
+- Repository renamed to lowercase `ai_intigrate_coding` (required by GHCR). Git remote URL updated and README badge/links point to the new name. CI/CD workflow paths use `${{ github.repository }}`, so they follow the rename automatically — no workflow changes needed.
+
 ## [0.8.1] - 2026-08-07
 
 ### Fixed
