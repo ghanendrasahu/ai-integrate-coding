@@ -127,7 +127,7 @@ MAX_OUTPUT_CHARS = 30000
 
 
 class ToolExecutor:
-    def __init__(self, workdir: str, browser: Browser, interactive: bool):
+    def __init__(self, workdir: str, browser: Browser | None, interactive: bool):
         self.workdir = workdir
         self.browser = browser
         self.interactive = interactive
@@ -148,12 +148,21 @@ class ToolExecutor:
             text = text[:MAX_OUTPUT_CHARS] + " ... [truncated]"
         return text
 
+    def _to_str(self, data: object) -> str:
+        if data is None:
+            return ""
+        if isinstance(data, bytes):
+            return data.decode("utf-8", errors="replace")
+        return str(data)
+
     def _abs(self, path: str) -> str:
         if not os.path.isabs(path):
             path = os.path.join(self.workdir, path)
         return os.path.normpath(path)
 
     def _exec_web_search(self, args: dict) -> str:
+        if self.browser is None:
+            return "ERROR: browser is disabled (use --no-browser implies no web research)."
         results = self.browser.search(args["query"], int(args.get("num_results", 6)))
         if not results:
             return "No results found."
@@ -161,6 +170,8 @@ class ToolExecutor:
         return self._trim("\n\n".join(lines))
 
     def _exec_web_open(self, args: dict) -> str:
+        if self.browser is None:
+            return "ERROR: browser is disabled (use --no-browser implies no web research)."
         return self._trim(self.browser.fetch_text(args["url"]))
 
     def _exec_append_note(self, args: dict) -> str:
@@ -195,8 +206,12 @@ class ToolExecutor:
                 cwd=self.workdir, timeout=timeout, encoding="utf-8", errors="replace",
             )
         except subprocess.TimeoutExpired as exc:
-            return f"ERROR: command timed out after {timeout}s\n{self._trim(exc.stdout or '')}\n{self._trim(exc.stderr or '')}"
-        out = self._trim((proc.stdout or "") + (proc.stderr or ""))
+            return (
+                f"ERROR: command timed out after {timeout}s\n"
+                f"{self._trim(self._to_str(exc.stdout))}\n"
+                f"{self._trim(self._to_str(exc.stderr))}"
+            )
+        out = self._trim(self._to_str(proc.stdout) + self._to_str(proc.stderr))
         return f"EXIT CODE: {proc.returncode}\nOUTPUT:\n{out if out else '(no output)'}"
 
     def _exec_ask_user(self, args: dict) -> str:

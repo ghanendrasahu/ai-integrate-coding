@@ -7,10 +7,12 @@ from agent import Agent
 
 def main() -> int:
     for stream in (sys.stdout, sys.stderr):
-        try:
-            stream.reconfigure(encoding="utf-8", errors="replace")
-        except Exception:
-            pass
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
     parser = argparse.ArgumentParser(
         prog="autonomous-agent",
         description="Autonomous coding agent: researches with Chrome (RAG), then builds, verifies and upgrades a project to production grade.",
