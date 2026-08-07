@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Released versions correspond to git tags.
 
+## [0.8.0] - 2026-08-07
+
+### Added
+
+- **Continuous Delivery** (`.github/workflows/cd.yml`): pushing a `v*` tag builds the image and publishes it to GitHub Container Registry as both `<tag>` and `latest`. This completes the CI/CD pipeline (CI runs tests + builds the image; CD publishes releases).
+- README: GHCR `docker pull` / `docker run` quick-start and a CI/CD overview.
+
 ## [0.7.4] - 2026-08-07
 
 ### Added

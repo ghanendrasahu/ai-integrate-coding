@@ -214,6 +214,13 @@ docker compose up --build
 docker compose run --rm cli "build a Flask REST API for a task tracker with JWT auth"
 ```
 
+Prebuilt image: every `v*` release tag is **also published as a ready-to-run image** to GitHub Container Registry, so you can skip the local build entirely:
+
+```bash
+docker pull ghcr.io/ghanendrasahu/ai_intigrate_coding:latest
+docker run -p 5000:5000 --env-file .env ghcr.io/ghanendrasahu/ai_intigrate_coding:latest
+```
+
 - Live code is bind-mounted, so edits are picked up without rebuilding — except changes to Python packages or Playwright, which need `docker compose build`.
 - Chromium is bundled in the image, so the browser research / web-sourcing tools work out of the box.
 - The optional `--sandbox` Docker isolation needs the host Docker socket exposed (see the commented lines in `docker-compose.yml`). Only enable it if you trust the tasks you run.
@@ -245,7 +252,12 @@ make lint                  # pyright type-check
 make clean                 # remove Python caches
 ```
 
-Both `test`/`lint` auto-use `.venv/Scripts/python` when present. The repository also ships a GitHub Actions workflow (`.github/workflows/ci.yml`) that installs deps + Chromium and runs the full suite on every push/PR.
+Both `test`/`lint` auto-use `.venv/Scripts/python` when present.
+
+### CI / CD
+
+- **CI** (`.github/workflows/ci.yml`) — on every push/PR: runs the full test suite and builds the Docker image.
+- **CD** (`.github/workflows/cd.yml`) — on every `v*` tag: builds the image and **publishes it to GHCR** (`ghcr.io/ghanendrasahu/ai_intigrate_coding:<tag>` and `:latest`).
 
 ### Quick start (local, without Docker)
 
@@ -378,7 +390,8 @@ Tune which services are queried with `WEB_AI_PROVIDERS` (e.g. `WEB_AI_PROVIDERS=
 ├── Makefile                 Make shortcuts (up / cli / test / lint / clean) for Git Bash, WSL, macOS, Linux
 ├── make.ps1                 Same shortcuts for Windows PowerShell (no `make` needed)
 ├── .dockerignore            Files excluded from the image build
-├── .github/workflows/ci.yml CI: tests + Docker build on every push / PR
+├── .github/workflows/ci.yml CI: tests + Docker build on push / PR
+├── .github/workflows/cd.yml CD: publish image to GHCR on `v*` tags
 ├── .env.example              Config template (copy to `.env` and fill in)
 ├── LICENSE                   MIT License
 ├── .gitignore
