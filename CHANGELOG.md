@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Released versions correspond to git tags.
 
+## [0.8.3] - 2026-08-07
+
+### Changed
+
+- Bumped CD workflow Docker actions to current Node-24 majors (`docker/login-action@v4`, `docker/build-push-action@v7`), removing the "Node.js 20 is deprecated" warning from pipeline logs.
+
 ## [0.8.2] - 2026-08-07
 
 ### Changed
