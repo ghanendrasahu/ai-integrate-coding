@@ -43,6 +43,11 @@
     background: #0b1220; border: 1px solid #1e293b; border-radius: 6px;
     padding: 0.75rem; white-space: pre-wrap; font-size: 0.8rem;
   }
+  #history { max-height: 240px; overflow-y: auto; }
+  .run-item { padding: 0.6rem; border-bottom: 1px solid #1e293b; cursor: pointer; }
+  .run-item:hover { background: #16233d; }
+  .run-item .t { font-weight: 600; color: #e2e8f0; }
+  .run-item .m { font-size: 0.75rem; color: #64748b; }
 </style>
 </head>
 <body>
@@ -84,6 +89,11 @@
     <div id="log"></div>
     <div id="report" hidden><h2>Final report</h2><pre id="report_body"></pre></div>
   </section>
+
+  <section>
+    <h2>Run history <button id="refresh_history" style="margin:0 0 0 0.5rem; padding:0.2rem 0.8rem;">Refresh</button></h2>
+    <div id="history"></div>
+  </section>
 </main>
 
 <script>
@@ -92,6 +102,67 @@
   const launchBtn = document.getElementById("launch");
   const reportEl = document.getElementById("report");
   const reportBody = document.getElementById("report_body");
+  const historyEl = document.getElementById("history");
+
+  function fmtTs(ts) {
+    if (!ts) return "";
+    return new Date(ts * 1000).toLocaleString();
+  }
+
+  async function loadHistory() {
+    try {
+      const res = await fetch("/api/history");
+      const data = await res.json();
+      historyEl.textContent = "";
+      const runs = data.runs || [];
+      if (!runs.length) {
+        historyEl.textContent = "(no runs yet)";
+        return;
+      }
+      runs.forEach((run) => {
+        const item = document.createElement("div");
+        item.className = "run-item";
+        const title = document.createElement("div");
+        title.className = "t";
+        title.textContent = run.task;
+        const meta = document.createElement("div");
+        meta.className = "m";
+        meta.textContent = `${fmtTs(run.started)} — phases: ${(run.phases || []).join(", ") || "-"}${run.has_report ? "" : " (incomplete)"}`;
+        item.appendChild(title);
+        item.appendChild(meta);
+        item.addEventListener("click", () => showRun(run.run_id, run));
+        historyEl.appendChild(item);
+      });
+    } catch (err) {
+      historyEl.textContent = "Failed to load history: " + err.message;
+    }
+  }
+
+  async function showRun(runId, run) {
+    logEl.textContent = "";
+    reportEl.hidden = true;
+    statusEl.textContent = "Loading run...";
+    try {
+      const res = await fetch(`/api/runs/${runId}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "failed to load");
+      (data.events || []).forEach((ev) => {
+        if (ev.type === "tool") {
+          appendLine(`[${ev.step}] ${ev.tool}: ${ev.result}\n`);
+        } else if (ev.type === "phase") {
+          appendLine(`\n=== PHASE: ${ev.phase} === ${ev.summary}\n`);
+        } else if (ev.type === "report") {
+          reportBody.textContent = ev.report;
+          reportEl.hidden = false;
+        } else if (ev.type === "meta") {
+          appendLine(`# ${ev.task}\n`);
+        }
+      });
+      statusEl.textContent = run ? "Loaded past run." : "";
+    } catch (err) {
+      statusEl.textContent = "ERROR: " + err.message;
+    }
+  }
 
   function appendLine(text) {
     logEl.textContent += text;
@@ -142,6 +213,7 @@
         reportEl.hidden = false;
         source.close();
         launchBtn.disabled = false;
+        loadHistory();
       }
     };
     source.onerror = () => {
@@ -151,6 +223,8 @@
   }
 
   document.getElementById("launch").addEventListener("click", launch);
+  document.getElementById("refresh_history").addEventListener("click", loadHistory);
+  loadHistory();
 </script>
 </body>
 </html>

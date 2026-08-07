@@ -1,6 +1,5 @@
 import os
 import re
-import shlex
 import subprocess
 import threading
 
@@ -333,15 +332,20 @@ class ToolExecutor:
         return f"EXIT CODE: {proc.returncode}\nOUTPUT:\n{out if out else '(no output)'}"
 
     def _run_in_docker(self, command: str, timeout: int) -> str:
-        docker_command = (
-            f"docker run --rm "
-            f"-v \"{self.workdir}\":/workspace -w /workspace "
-            f"{SANDBOX_IMAGE} sh -lc {shlex.quote(command)}"
-        )
+        argv = [
+            "docker", "run", "--rm",
+            "-v", f"{self.workdir}:/workspace",
+            "-w", "/workspace",
+            SANDBOX_IMAGE, "sh", "-lc", command,
+        ]
         try:
             proc = subprocess.run(
-                docker_command, shell=True, capture_output=True, text=True,
-                timeout=timeout, encoding="utf-8", errors="replace",
+                argv,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                encoding="utf-8",
+                errors="replace",
             )
         except subprocess.TimeoutExpired as exc:
             return (

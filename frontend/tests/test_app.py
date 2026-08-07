@@ -81,3 +81,56 @@ def test_launch_creates_run_and_streams(monkeypatch, client, clean_runs):
 def test_stream_unknown_run(client):
     response = client.get("/api/runs/nope/stream")
     assert response.status_code == 404
+
+
+def _write_run(runs_dir, run_id, events):
+    runs_dir.mkdir(parents=True, exist_ok=True)
+    (runs_dir / f"{run_id}.jsonl").write_text(
+        "\n".join(__import__("json").dumps(e) for e in events) + "\n",
+        encoding="utf-8",
+    )
+
+
+def test_history_lists_runs(monkeypatch, client, tmp_path):
+    import json
+
+    import app as frontend
+
+    monkeypatch.setattr(frontend, "RUNS_DIR", str(tmp_path))
+    _write_run(
+        tmp_path,
+        "1700000000_build-a-todo-app",
+        [
+            {"ts": 1.0, "type": "meta", "task": "build a todo app", "workdir": ""},
+            {"ts": 2.0, "type": "phase", "phase": "research", "summary": "ok"},
+            {"ts": 3.0, "type": "phase", "phase": "build", "summary": "ok"},
+            {"ts": 4.0, "type": "report", "report": "done"},
+        ],
+    )
+    response = client.get("/api/history")
+    assert response.status_code == 200
+    runs = response.get_json()["runs"]
+    assert len(runs) == 1
+    assert runs[0]["task"] == "build a todo app"
+    assert runs[0]["phases"] == ["research", "build"]
+    assert runs[0]["has_report"] is True
+
+
+def test_run_detail(monkeypatch, client, tmp_path):
+    import json
+
+    import app as frontend
+
+    monkeypatch.setattr(frontend, "RUNS_DIR", str(tmp_path))
+    _write_run(tmp_path, "abc", [{"ts": 1.0, "type": "meta", "task": "hi"}])
+    response = client.get("/api/runs/abc")
+    assert response.status_code == 200
+    assert response.get_json()["events"][0]["task"] == "hi"
+
+
+def test_run_detail_unknown(monkeypatch, client, tmp_path):
+    import app as frontend
+
+    monkeypatch.setattr(frontend, "RUNS_DIR", str(tmp_path))
+    response = client.get("/api/runs/missing")
+    assert response.status_code == 404

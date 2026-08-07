@@ -4,6 +4,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 
+from .history import RunHistory
 from .llm import LLMClient
 from .retrieval import build_retriever
 from .tools import TOOL_SCHEMAS, ToolExecutor
@@ -127,6 +128,7 @@ class Agent:
         self.executor = ToolExecutor(
             self.workdir, use_browser, interactive, headless=headless, task=task, sandbox=sandbox
         )
+        self.history = RunHistory(self.workdir, task)
         self.llm = LLMClient(model=model)
 
     def _system(self, phase: str) -> str:
@@ -167,9 +169,17 @@ class Agent:
                 for tc, fname, summary, result in handled:
                     if summary is not None:
                         done_summary = summary
+                    self.history.record(
+                        "tool",
+                        step=step,
+                        tool=fname,
+                        arguments=(tc.function.arguments or "")[:200],
+                        result=str(result)[:300],
+                    )
                     print(_safe(f"[{step}] {fname}: {result[:400]}"))
                     messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
                 if done_summary is not None:
+                    self.history.record("phase", phase=name, summary=done_summary)
                     return done_summary
             else:
                 messages.append({"role": "assistant", "content": message.content or ""})
@@ -178,6 +188,7 @@ class Agent:
             messages = self._compact(messages, name)
 
         print(_safe(f"[WARN] {name.upper()} phase exceeded {self.max_steps} steps; forcing phase end."))
+        self.history.record("phase", phase=name, summary=done_summary or f"ended after step limit")
         return done_summary or f"Phase {name} ended after hitting the step limit."
 
     def _handle_tool_call(self, tc) -> tuple:
@@ -268,4 +279,6 @@ class Agent:
                         break
         finally:
             self.executor.close()
-        return "\n".join(report)
+        final = "\n".join(report)
+        self.history.record("report", report=final)
+        return final

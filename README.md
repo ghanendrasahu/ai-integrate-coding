@@ -36,6 +36,7 @@ A self-driving software engineering agent that turns a single task prompt into a
 - **Streaming LLM output** — `--stream` prints the model's reasoning live to the console instead of only showing tool results.
 - **Sandboxed command execution** — `--sandbox` blocks destructive shell commands (denylist) and confines file tools to the working directory; when Docker is available it runs commands inside an isolated container (`AGENT_SANDBOX_IMAGE`).
 - **Conversation summarization** — when the conversation hits its message cap, older context is compressed by the LLM into a summary instead of being dropped, preserving decisions across long phases.
+- **Persistent run history** — every run writes a queryable JSONL timeline (`runs/*.jsonl`) of tool calls, phases, and the final report; the web frontend lists past runs and lets you reopen any timeline for cross-project planning.
 - **Config file + `.env`** — settings load from `agent.toml`, `.env`, and environment variables, with CLI flags taking precedence (see [Configuration](#configuration)).
 - **Run log** — every run is teed to `agent_run.log` in the working directory for debugging.
 - **Human review gates** — optional checkpoints between phases (`--review-gates`) where you can continue, skip the rest, or abort.
@@ -295,7 +296,7 @@ Configurable via environment variables:
 | `FLASK_PORT` | `5000` | Port the frontend listens on. |
 | `FLASK_DEBUG` | *(off)* | Set to `1` to enable Flask debug mode. |
 
-The agent subprocess runs from the repository root, so it uses the same `.env` / `agent.toml` and LLM backend as the CLI.
+The agent subprocess runs from the repository root, so it uses the same `.env` / `agent.toml` and LLM backend as the CLI. Completed runs are recorded under `<workdir>/runs/*.jsonl` and appear in the **Run history** panel, where you can reopen any run's timeline and final report.
 
 ## Project Structure
 
@@ -313,6 +314,7 @@ The agent subprocess runs from the repository root, so it uses the same `.env` /
 │   ├── browser.py           Chrome automation for web search and page extraction (RAG)
 │   ├── cli.py               CLI parsing, config merging, run-log tee
 │   ├── config.py            agent.toml / env / CLI configuration resolution
+│   ├── history.py           JSONL run-history timeline recorder
 │   ├── llm.py               Provider-agnostic LLM client with tool calling
 │   ├── retrieval.py         RAG retriever: dense embeddings (OpenAI/Ollama) with TF-IDF fallback
 │   └── tools.py             Tool schemas and executor (web, file, shell, notes, finish, sandbox)
@@ -393,7 +395,7 @@ Syntax check:
 python -m py_compile main.py agent\*.py
 ```
 
-Current status: **49 tests passing** (44 core + 5 frontend), **0 type errors / 0 warnings**.
+Current status: **57 tests passing** (49 core + 8 frontend), **0 type errors / 0 warnings**.
 
 ## Troubleshooting
 
@@ -411,7 +413,6 @@ Current status: **49 tests passing** (44 core + 5 frontend), **0 type errors / 0
 
 The following are planned or under consideration:
 
-- **Persistent run history** — store every phase's decisions in a queryable timeline to support cross-project planning.
 - **Multi-agent orchestration** — split a large task across specialized sub-agents (researcher, builder, verifier).
 - **Rerankers & hybrid search** — combine dense + sparse retrieval with a cross-encoder reranker for even stronger recall.
 - **Cache-aware builds** — reuse previously fetched web content and LLM responses to cut cost and latency.

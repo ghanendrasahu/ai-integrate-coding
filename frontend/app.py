@@ -9,6 +9,7 @@ import uuid
 from flask import Flask, Response, jsonify, render_template, request
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RUNS_DIR = os.path.join(REPO_ROOT, "workspace", "runs")
 
 app = Flask(__name__)
 
@@ -84,6 +85,57 @@ def _launch(run: Run) -> None:
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+def _load_run(run_id: str) -> list[dict] | None:
+    path = os.path.join(RUNS_DIR, f"{run_id}.jsonl")
+    if not os.path.exists(path):
+        return None
+    events: list[dict] = []
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            for line in fh:
+                if line.strip():
+                    events.append(json.loads(line))
+    except OSError:
+        return None
+    return events
+
+
+@app.route("/api/history")
+def history():
+    runs: list[dict] = []
+    if os.path.isdir(RUNS_DIR):
+        for name in sorted(os.listdir(RUNS_DIR), reverse=True):
+            if not name.endswith(".jsonl"):
+                continue
+            run_id = name[: -len(".jsonl")]
+            events = _load_run(run_id)
+            if not events:
+                continue
+            meta = next((e for e in events if e.get("type") == "meta"), {})
+            phases = [e.get("phase") for e in events if e.get("type") == "phase"]
+            started = events[0].get("ts") if events else None
+            last = events[-1].get("ts") if events else None
+            runs.append(
+                {
+                    "run_id": run_id,
+                    "task": meta.get("task", run_id),
+                    "started": started,
+                    "finished": last,
+                    "phases": phases,
+                    "has_report": any(e.get("type") == "report" for e in events),
+                }
+            )
+    return jsonify({"runs": runs})
+
+
+@app.route("/api/runs/<run_id>")
+def run_detail(run_id: str):
+    events = _load_run(run_id)
+    if events is None:
+        return jsonify({"error": "unknown run"}), 404
+    return jsonify({"run_id": run_id, "events": events})
 
 
 @app.route("/api/launch", methods=["POST"])
