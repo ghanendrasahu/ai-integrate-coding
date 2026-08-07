@@ -1,5 +1,6 @@
 import os
 import subprocess
+import threading
 
 from .browser import Browser
 
@@ -127,12 +128,17 @@ MAX_OUTPUT_CHARS = 30000
 
 
 class ToolExecutor:
-    def __init__(self, workdir: str, browser: Browser | None, interactive: bool):
+    def __init__(self, workdir: str, use_browser: bool, interactive: bool, headless: bool = True):
         self.workdir = workdir
-        self.browser = browser
+        self.use_browser = use_browser
+        self.headless = headless
         self.interactive = interactive
         self.notes_path = os.path.join(workdir, "research_notes.md")
         self.notes: list[str] = self._load_notes()
+        self._notes_lock = threading.Lock()
+        self._browser_thread = threading.local()
+        self._browsers: list[Browser] = []
+        self._browsers_lock = threading.Lock()
 
     def _load_notes(self) -> list[str]:
         try:
@@ -148,6 +154,26 @@ class ToolExecutor:
                     fh.write(f"- {note}\n")
         except OSError:
             pass
+
+    def _browser_for_thread(self) -> Browser | None:
+        if not self.use_browser:
+            return None
+        browser = getattr(self._browser_thread, "browser", None)
+        if browser is None:
+            browser = Browser(headless=self.headless)
+            with self._browsers_lock:
+                self._browsers.append(browser)
+            self._browser_thread.browser = browser
+        return browser
+
+    def close(self) -> None:
+        with self._browsers_lock:
+            browsers, self._browsers = self._browsers, []
+        for browser in browsers:
+            try:
+                browser.close()
+            except Exception:
+                pass
 
     def execute(self, name: str, args: dict) -> str:
         handler = getattr(self, f"_exec_{name}", None)
@@ -177,23 +203,26 @@ class ToolExecutor:
         return os.path.normpath(path)
 
     def _exec_web_search(self, args: dict) -> str:
-        if self.browser is None:
+        browser = self._browser_for_thread()
+        if browser is None:
             return "ERROR: browser is disabled (use --no-browser implies no web research)."
-        results = self.browser.search(args["query"], int(args.get("num_results", 6)))
+        results = browser.search(args["query"], int(args.get("num_results", 6)))
         if not results:
             return "No results found."
         lines = [f"{i + 1}. {r['title']}\n   URL: {r['url']}\n   {r['snippet']}" for i, r in enumerate(results)]
         return self._trim("\n\n".join(lines))
 
     def _exec_web_open(self, args: dict) -> str:
-        if self.browser is None:
+        browser = self._browser_for_thread()
+        if browser is None:
             return "ERROR: browser is disabled (use --no-browser implies no web research)."
-        return self._trim(self.browser.fetch_text(args["url"]))
+        return self._trim(browser.fetch_text(args["url"]))
 
     def _exec_append_note(self, args: dict) -> str:
-        self.notes.append(str(args["note"]))
-        self._save_notes()
-        return f"Note saved. Total notes: {len(self.notes)}"
+        with self._notes_lock:
+            self.notes.append(str(args["note"]))
+            self._save_notes()
+            return f"Note saved. Total notes: {len(self.notes)}"
 
     def _exec_list_dir(self, args: dict) -> str:
         path = self._abs(args.get("path", "."))

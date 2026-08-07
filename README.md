@@ -29,6 +29,8 @@ A self-driving software engineering agent that turns a single task prompt into a
 
 - **Autonomous workflow** — Research → Build → Verify → Upgrade, with no manual steps in between.
 - **Chrome as a RAG knowledge base** — the agent asks itself the relevant questions from your prompt, searches the web in a real Chrome browser, reads pages, and stores the findings as persistent research notes that feed every later decision.
+- **Semantic research retrieval** — instead of dumping the whole knowledge base into context, only the top-K notes most relevant to the current task and phase are retrieved each turn (TF-IDF based, no external services), keeping long research sessions bounded.
+- **Parallel tool execution** — when the model issues several tool calls in one response (common during research), they run concurrently for faster research, with thread-safe note and browser handling.
 - **Persistent project memory** — research notes are saved to `research_notes.md` in the working directory, so interrupted runs resume without redoing research.
 - **`.env` configuration** — provider settings load from a `.env` file automatically (see [Configuration](#configuration)).
 - **Ground-truth code, not guesses** — versions, APIs, and best practices come from live research instead of the model's memory.
@@ -221,12 +223,14 @@ python main.py "build a python script that downloads stock prices and generates 
 │   ├── agent.py             Orchestrator: research → build → verify → upgrade loop
 │   ├── browser.py           Chrome automation for web search and page extraction (RAG)
 │   ├── llm.py               Provider-agnostic LLM client with tool calling
+│   ├── retrieval.py         TF-IDF retriever for the research notes knowledge base
 │   └── tools.py             Tool schemas and executor (web, file, shell, notes, finish)
 └── tests/
     ├── fakes.py             Scripted fake LLM used to test the phase loop offline
-    ├── test_tools.py        Tool executor tests (files, shell, notes persistence)
+    ├── test_agent.py        End-to-end phase loop tests (no API key needed)
     ├── test_browser.py      Chrome/Playwright search and extraction tests
-    └── test_agent.py        End-to-end phase loop tests (no API key needed)
+    ├── test_retrieval.py    Knowledge-base retriever tests
+    └── test_tools.py        Tool executor tests (files, shell, notes persistence)
 ```
 
 ## Tool Reference
@@ -286,7 +290,7 @@ Syntax check:
 python -m py_compile main.py agent\*.py
 ```
 
-Current status: **14 tests passing**, **0 type errors / 0 warnings**.
+Current status: **20 tests passing**, **0 type errors / 0 warnings**.
 
 ## Troubleshooting
 
@@ -302,8 +306,7 @@ Current status: **14 tests passing**, **0 type errors / 0 warnings**.
 
 The following are planned or under consideration:
 
-- **Vector-based RAG** — embed research notes and retrieve semantically instead of injecting all notes.
-- **Parallel tool execution** — run independent commands and research queries concurrently.
+- **Embedding-based RAG** — swap the TF-IDF retriever for dense embeddings (OpenAI/Ollama) for stronger semantic recall.
 - **Conversation summarization** — compress old tool results with the LLM instead of dropping them at the message cap.
 - **Config file support** — a `agent.toml` file as an alternative to environment variables.
 - **CI/CD output** — generate GitHub Actions workflows for generated projects.

@@ -2,9 +2,10 @@ import json
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 
-from .browser import Browser
 from .llm import LLMClient
+from .retrieval import Retriever
 from .tools import TOOL_SCHEMAS, ToolExecutor
 
 SYSTEM_BASE = """You are an autonomous production-grade software engineering agent.
@@ -80,6 +81,9 @@ built, how it was verified, and exactly how to run it.""",
 
 MAX_MESSAGES = 60
 MAX_RETRIES = 3
+MAX_PARALLEL = 4
+RETRIEVAL_K = 8
+RECENT_NOTES = 3
 
 
 def _loads_args(raw: str) -> dict:
@@ -112,14 +116,18 @@ class Agent:
         self.interactive = interactive
         self.use_browser = use_browser
         self.max_steps = max_steps or 40
-        self.browser = Browser(headless=headless) if use_browser else None
-        self.executor = ToolExecutor(self.workdir, self.browser, interactive)
+        self.executor = ToolExecutor(self.workdir, use_browser, interactive, headless=headless)
         self.llm = LLMClient(model=model)
 
-    def _system(self) -> str:
+    def _system(self, phase: str) -> str:
         notes = self.executor.notes
         if notes:
-            rendered = "\n".join(f"- {n}" for n in notes)
+            if len(notes) <= RETRIEVAL_K + RECENT_NOTES:
+                selected = notes
+            else:
+                top = Retriever(notes).search(f"{self.task} {phase}", k=RETRIEVAL_K)
+                selected = list(dict.fromkeys(top + notes[-RECENT_NOTES:]))
+            rendered = "\n".join(f"- {n}" for n in selected)
         else:
             rendered = "(empty - run research first)"
         return SYSTEM_BASE.format(workdir=self.workdir, task=self.task, notes=rendered)
@@ -127,13 +135,13 @@ class Agent:
     def _run_phase(self, name: str) -> str | None:
         print(f"\n=== PHASE: {name.upper()} ===")
         messages: list[dict] = [
-            {"role": "system", "content": self._system()},
+            {"role": "system", "content": self._system(name)},
             {"role": "user", "content": PHASES[name]},
         ]
         done_summary: str | None = None
 
         for step in range(self.max_steps):
-            messages[0] = {"role": "system", "content": self._system()}
+            messages[0] = {"role": "system", "content": self._system(name)}
             message = self._chat(messages)
             if message.tool_calls:
                 assistant_msg = {
@@ -145,11 +153,10 @@ class Agent:
                     ],
                 }
                 messages.append(assistant_msg)
-                for tc in message.tool_calls:
-                    fname, fargs = tc.function.name, _loads_args(tc.function.arguments)
-                    if fname == "finish":
-                        done_summary = fargs.get("summary", "")
-                    result = self.executor.execute(fname, fargs)
+                handled = self._execute_tool_calls(message.tool_calls)
+                for tc, fname, summary, result in handled:
+                    if summary is not None:
+                        done_summary = summary
                     print(_safe(f"[{step}] {fname}: {result[:400]}"))
                     messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
                 if done_summary is not None:
@@ -162,6 +169,19 @@ class Agent:
 
         print(_safe(f"[WARN] {name.upper()} phase exceeded {self.max_steps} steps; forcing phase end."))
         return done_summary or f"Phase {name} ended after hitting the step limit."
+
+    def _handle_tool_call(self, tc) -> tuple:
+        fname = tc.function.name
+        fargs = _loads_args(tc.function.arguments)
+        result = self.executor.execute(fname, fargs)
+        summary = fargs.get("summary") if fname == "finish" else None
+        return tc, fname, summary, result
+
+    def _execute_tool_calls(self, tool_calls) -> list[tuple]:
+        if len(tool_calls) <= 1:
+            return [self._handle_tool_call(tool_calls[0])]
+        with ThreadPoolExecutor(max_workers=min(len(tool_calls), MAX_PARALLEL)) as pool:
+            return list(pool.map(self._handle_tool_call, tool_calls))
 
     def _trim_messages(self, messages: list[dict]) -> list[dict]:
         if len(messages) <= MAX_MESSAGES:
@@ -195,6 +215,5 @@ class Agent:
                 summary = self._run_phase(phase)
                 report.append(f"## {phase.upper()}\n{summary}\n")
         finally:
-            if self.browser is not None:
-                self.browser.close()
+            self.executor.close()
         return "\n".join(report)

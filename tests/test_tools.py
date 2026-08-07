@@ -5,7 +5,7 @@ from agent.tools import ToolExecutor
 
 @pytest.fixture
 def executor(tmp_path):
-    return ToolExecutor(str(tmp_path), None, False)
+    return ToolExecutor(str(tmp_path), False, False)
 
 
 def test_write_read_list(executor, tmp_path):
@@ -33,7 +33,7 @@ def test_run_command_timeout(executor):
 
 
 def test_append_note_disabled_browser(tmp_path):
-    ex = ToolExecutor(str(tmp_path), None, False)
+    ex = ToolExecutor(str(tmp_path), False, False)
     assert ex.execute("web_search", {"query": "x"}) != "ERROR: unknown tool 'web_search'"
     assert "disabled" in ex.execute("web_search", {"query": "x"}).lower()
 
@@ -51,8 +51,8 @@ def test_unknown_tool(executor):
 
 
 def test_notes_persist_to_disk(tmp_path):
-    ToolExecutor(str(tmp_path), None, False).execute("append_note", {"note": "fact A"})
-    reloaded = ToolExecutor(str(tmp_path), None, False)
+    ToolExecutor(str(tmp_path), False, False).execute("append_note", {"note": "fact A"})
+    reloaded = ToolExecutor(str(tmp_path), False, False)
     assert reloaded.notes == ["fact A"]
     assert (tmp_path / "research_notes.md").exists()
 
@@ -60,5 +60,11 @@ def test_notes_persist_to_disk(tmp_path):
 def test_notes_loaded_across_runs_skip_bad_lines(tmp_path):
     notes_file = tmp_path / "research_notes.md"
     notes_file.write_text("- good note\nmalformed line\n- second note\n", encoding="utf-8")
-    reloaded = ToolExecutor(str(tmp_path), None, False)
+    reloaded = ToolExecutor(str(tmp_path), False, False)
     assert reloaded.notes == ["good note", "second note"]
+
+
+def test_close_without_browsers(executor):
+    executor.close()
+    executor.execute("append_note", {"note": "after close"})
+    assert executor.notes == ["after close"]
