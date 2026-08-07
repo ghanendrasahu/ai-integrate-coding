@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here. Released versions correspond to git tags.
 
+## [0.7.1] - 2026-08-07
+
+### Added
+
+- `Makefile` convenience shortcuts: `up` / `down` / `build` / `cli TASK="..."` / `shell` / `logs` (Docker) and `setup` / `test` / `lint` / `clean` (local). `test` and `lint` auto-use `.venv/Scripts/python` when present.
+- CI through GitHub Actions (`.github/workflows/ci.yml`): installs deps + Playwright Chromium and runs the full suite on every push/PR to `main`.
+- README "Command shortcuts (Makefile)" section and updated project tree.
+
+### Changed
+
+- Removed on-disk `__pycache__` and `.pytest_cache` artifacts (gitignored, kept out of the repo).
+
 ## [0.7.0] - 2026-08-07
 
 ### Added
