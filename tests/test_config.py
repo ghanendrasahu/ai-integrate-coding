@@ -55,3 +55,20 @@ def test_env_overrides_toml(monkeypatch, tmp_path):
     )
     cfg = resolve_config(SimpleNamespace(), toml_path=str(tmp_path / "agent.toml"))
     assert cfg["model"] == "env-model"
+
+
+def test_stream_and_sandbox_flags(tmp_path):
+    args = SimpleNamespace(stream=True, sandbox=True)
+    cfg = resolve_config(args, toml_path=str(tmp_path / "agent.toml"))
+    assert cfg["stream"] is True
+    assert cfg["sandbox"] is True
+
+
+def test_stream_and_sandbox_toml(tmp_path):
+    (tmp_path / "agent.toml").write_text(
+        "[agent]\nstream = true\nsandbox = true\n",
+        encoding="utf-8",
+    )
+    cfg = resolve_config(SimpleNamespace(), toml_path=str(tmp_path / "agent.toml"))
+    assert cfg["stream"] is True
+    assert cfg["sandbox"] is True

@@ -8,6 +8,8 @@ use_browser = true
 headless = true
 max_steps = 40
 review_gates = false
+stream = false
+sandbox = false
 log_file = "agent_run.log"
 
 [llm]

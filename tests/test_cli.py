@@ -5,8 +5,10 @@ from agent.cli import build_parser
 
 def test_parser_flags():
     parser = build_parser()
-    ns = parser.parse_args(["--review-gates", "--log", "x.log", "do", "something"])
+    ns = parser.parse_args(["--review-gates", "--stream", "--sandbox", "--log", "x.log", "do", "something"])
     assert ns.review_gates is True
+    assert ns.stream is True
+    assert ns.sandbox is True
     assert ns.log == "x.log"
     assert ns.prompt == ["do", "something"]
 

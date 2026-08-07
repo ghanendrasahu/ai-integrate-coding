@@ -39,6 +39,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model", default=None, help="Override the LLM model name.")
     parser.add_argument("--max-steps", type=int, default=None, help="Override steps allowed per phase.")
     parser.add_argument("--review-gates", action="store_true", help="Pause between phases for human approval.")
+    parser.add_argument("--stream", action="store_true", help="Stream the model's reasoning live to the console.")
+    parser.add_argument("--sandbox", action="store_true", help="Run commands in a sandbox (destructive-command guard, Docker isolation when available).")
     parser.add_argument("--log", default=None, help="Path to the run log file (default: agent_run.log in the workdir).")
     parser.add_argument("--no-log", action="store_true", help="Disable writing the run log file.")
     return parser
@@ -87,11 +89,15 @@ def main() -> int:
         model=cfg.get("model") or None,
         max_steps=cfg["max_steps"],
         review_gates=cfg["review_gates"],
+        stream=cfg.get("stream", False),
+        sandbox=cfg.get("sandbox", False),
     )
 
     print(f"Task   : {task}")
     print(f"Workdir: {workdir}")
     print(f"Browser: {'on' if cfg['use_browser'] else 'off'} ({'headless' if cfg['headless'] else 'visible'})")
+    print(f"Stream : {'on' if cfg.get('stream', False) else 'off'}")
+    print(f"Sandbox: {'on' if cfg.get('sandbox', False) else 'off'}")
 
     try:
         report = agent.run()

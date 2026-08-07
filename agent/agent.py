@@ -5,7 +5,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from .llm import LLMClient
-from .retrieval import Retriever
+from .retrieval import build_retriever
 from .tools import TOOL_SCHEMAS, ToolExecutor
 
 SYSTEM_BASE = """You are an autonomous production-grade software engineering agent.
@@ -112,6 +112,8 @@ class Agent:
         model: str | None = None,
         max_steps: int | None = None,
         review_gates: bool = False,
+        stream: bool = False,
+        sandbox: bool = False,
     ):
         self.task = task
         self.workdir = os.path.abspath(workdir)
@@ -120,7 +122,11 @@ class Agent:
         self.use_browser = use_browser
         self.max_steps = max_steps or 40
         self.review_gates = review_gates
-        self.executor = ToolExecutor(self.workdir, use_browser, interactive, headless=headless)
+        self.stream = stream
+        self.sandbox = sandbox
+        self.executor = ToolExecutor(
+            self.workdir, use_browser, interactive, headless=headless, task=task, sandbox=sandbox
+        )
         self.llm = LLMClient(model=model)
 
     def _system(self, phase: str) -> str:
@@ -129,7 +135,7 @@ class Agent:
             if len(notes) <= RETRIEVAL_K + RECENT_NOTES:
                 selected = notes
             else:
-                top = Retriever(notes).search(f"{self.task} {phase}", k=RETRIEVAL_K)
+                top = build_retriever(notes).search(f"{self.task} {phase}", k=RETRIEVAL_K)
                 selected = list(dict.fromkeys(top + notes[-RECENT_NOTES:]))
             rendered = "\n".join(f"- {n}" for n in selected)
         else:
@@ -229,6 +235,15 @@ class Agent:
         last_error = None
         for attempt in range(MAX_RETRIES):
             try:
+                if self.stream:
+                    print("  ", end="", flush=True)
+                    message = self.llm.chat_stream(
+                        messages,
+                        tools=TOOL_SCHEMAS,
+                        on_delta=lambda delta: print(_safe(delta), end="", flush=True),
+                    )
+                    print(flush=True)
+                    return message
                 return self.llm.chat(messages, tools=TOOL_SCHEMAS)
             except Exception as exc:
                 last_error = exc

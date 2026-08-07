@@ -1,4 +1,6 @@
 import os
+import re
+import shlex
 import subprocess
 import threading
 
@@ -126,14 +128,66 @@ TOOL_SCHEMAS = [
 
 MAX_OUTPUT_CHARS = 30000
 
+SANDBOX_IMAGE = os.getenv("AGENT_SANDBOX_IMAGE", "python:3.11-slim")
+
+SANDBOX_BLOCKED_PATTERNS = [
+    re.compile(r"\brm\s+-[rf]+\b"),
+    re.compile(r"\bdel\s+/[fsq]"),
+    re.compile(r"\brmdir\s+/[sq]"),
+    re.compile(r"\bformat\s+[a-z]:\s*/[qfsy]"),
+    re.compile(r"\bmkfs\b"),
+    re.compile(r"\bdd\s+of="),
+    re.compile(r"\bshutdown\b"),
+    re.compile(r"\breboot\b"),
+    re.compile(r"\bhalt\b"),
+    re.compile(r">\s*/dev/sd"),
+    re.compile(r"chmod\s+-R\s+777\s+/"),
+    re.compile(r":\(\)\s*\{"),
+]
+
+
+def _check_command_safety(command: str) -> str | None:
+    lowered = command.lower()
+    for pattern in SANDBOX_BLOCKED_PATTERNS:
+        if pattern.search(lowered):
+            return pattern.pattern
+    return None
+
+
+def _docker_available() -> bool:
+    try:
+        result = subprocess.run(
+            ["docker", "version", "--format", "{{.Server.Version}}"],
+            capture_output=True,
+            timeout=10,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
+def _slugify(text: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:60]
+    return slug or "default"
+
 
 class ToolExecutor:
-    def __init__(self, workdir: str, use_browser: bool, interactive: bool, headless: bool = True):
+    def __init__(
+        self,
+        workdir: str,
+        use_browser: bool,
+        interactive: bool,
+        headless: bool = True,
+        task: str | None = None,
+        sandbox: bool = False,
+    ):
         self.workdir = workdir
         self.use_browser = use_browser
         self.headless = headless
         self.interactive = interactive
-        self.notes_path = os.path.join(workdir, "research_notes.md")
+        self.sandbox = sandbox
+        self.task_slug = _slugify(task or "default")
+        self.notes_path = os.path.join(workdir, "research_notes", f"{self.task_slug}.md")
         self.notes: list[str] = self._load_notes()
         self._notes_lock = threading.Lock()
         self._browser_thread = threading.local()
@@ -149,6 +203,8 @@ class ToolExecutor:
 
     def _save_notes(self) -> None:
         try:
+            parent = os.path.dirname(self.notes_path)
+            os.makedirs(parent, exist_ok=True)
             with open(self.notes_path, "w", encoding="utf-8") as fh:
                 for note in self.notes:
                     fh.write(f"- {note}\n")
@@ -200,7 +256,10 @@ class ToolExecutor:
     def _abs(self, path: str) -> str:
         if not os.path.isabs(path):
             path = os.path.join(self.workdir, path)
-        return os.path.normpath(path)
+        resolved = os.path.normpath(path)
+        if self.sandbox and not os.path.commonpath([resolved, self.workdir]) == self.workdir:
+            raise ValueError(f"sandbox: path escapes the working directory: {path}")
+        return resolved
 
     def _exec_web_search(self, args: dict) -> str:
         browser = self._browser_for_thread()
@@ -245,10 +304,23 @@ class ToolExecutor:
         return f"Wrote {path} ({len(args['content'])} chars)"
 
     def _exec_run_command(self, args: dict) -> str:
+        command = str(args["command"])
         timeout = int(args.get("timeout", 120))
+        if self.sandbox:
+            blocked = _check_command_safety(command)
+            if blocked is not None:
+                return (
+                    f"ERROR: command blocked by sandbox (matches pattern: {blocked})\n"
+                    f"Command: {command}"
+                )
+            if _docker_available():
+                return self._run_in_docker(command, timeout)
+        return self._run_local(command, timeout)
+
+    def _run_local(self, command: str, timeout: int) -> str:
         try:
             proc = subprocess.run(
-                args["command"], shell=True, capture_output=True, text=True,
+                command, shell=True, capture_output=True, text=True,
                 cwd=self.workdir, timeout=timeout, encoding="utf-8", errors="replace",
             )
         except subprocess.TimeoutExpired as exc:
@@ -259,6 +331,29 @@ class ToolExecutor:
             )
         out = self._trim(self._to_str(proc.stdout) + self._to_str(proc.stderr))
         return f"EXIT CODE: {proc.returncode}\nOUTPUT:\n{out if out else '(no output)'}"
+
+    def _run_in_docker(self, command: str, timeout: int) -> str:
+        docker_command = (
+            f"docker run --rm "
+            f"-v \"{self.workdir}\":/workspace -w /workspace "
+            f"{SANDBOX_IMAGE} sh -lc {shlex.quote(command)}"
+        )
+        try:
+            proc = subprocess.run(
+                docker_command, shell=True, capture_output=True, text=True,
+                timeout=timeout, encoding="utf-8", errors="replace",
+            )
+        except subprocess.TimeoutExpired as exc:
+            return (
+                f"ERROR: sandboxed command timed out after {timeout}s\n"
+                f"{self._trim(self._to_str(exc.stdout))}\n"
+                f"{self._trim(self._to_str(exc.stderr))}"
+            )
+        out = self._trim(self._to_str(proc.stdout) + self._to_str(proc.stderr))
+        return (
+            f"EXIT CODE: {proc.returncode} (in sandbox image {SANDBOX_IMAGE})\n"
+            f"OUTPUT:\n{out if out else '(no output)'}"
+        )
 
     def _exec_ask_user(self, args: dict) -> str:
         if not self.interactive:

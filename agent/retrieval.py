@@ -1,12 +1,83 @@
+import json
 import math
+import os
 import re
+import urllib.request
 from collections import Counter
+from typing import Protocol
 
 _TOKEN_RE = re.compile(r"[a-z0-9_]+")
 
 
 def _tokens(text: str) -> list[str]:
     return _TOKEN_RE.findall(text.lower())
+
+
+class Embedder(Protocol):
+    def embed(self, texts: list[str]) -> list[list[float]]: ...
+
+
+class RetrieverProtocol(Protocol):
+    def search(self, query: str, k: int = 8) -> list[str]: ...
+
+
+class OpenAIEmbedder:
+    def __init__(self, model: str | None = None):
+        from openai import OpenAI
+
+        self.client = OpenAI(
+            api_key=os.getenv("AGENT_API_KEY") or os.getenv("OPENAI_API_KEY"),
+            base_url=os.getenv("AGENT_API_BASE") or None,
+        )
+        self.model = model or os.getenv("AGENT_EMBED_MODEL", "text-embedding-3-small")
+        self._cache: dict[str, list[float]] = {}
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        missing = [text for text in texts if text not in self._cache]
+        if missing:
+            response = self.client.embeddings.create(model=self.model, input=missing)
+            for text, item in zip(missing, response.data):
+                self._cache[text] = item.embedding
+        return [self._cache[text] for text in texts]
+
+
+class OllamaEmbedder:
+    def __init__(self, model: str | None = None, base: str = "http://localhost:11434"):
+        self.model = model or os.getenv("AGENT_EMBED_MODEL", "nomic-embed-text")
+        self.base = base.rstrip("/")
+        self._cache: dict[str, list[float]] = {}
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        for text in texts:
+            if text not in self._cache:
+                payload = json.dumps({"model": self.model, "input": text}).encode("utf-8")
+                request = urllib.request.Request(
+                    self.base + "/api/embeddings",
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                )
+                with urllib.request.urlopen(request, timeout=30) as response:
+                    self._cache[text] = json.loads(response.read())["embedding"]
+        return [self._cache[text] for text in texts]
+
+
+def make_embedder() -> Embedder | None:
+    provider = os.getenv("AGENT_PROVIDER", "").lower()
+    try:
+        if provider == "ollama":
+            return OllamaEmbedder()
+        if os.getenv("AGENT_API_KEY") or os.getenv("OPENAI_API_KEY"):
+            return OpenAIEmbedder()
+    except Exception:
+        return None
+    return None
+
+
+def _cosine(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = math.sqrt(sum(x * x for x in a)) or 1.0
+    norm_b = math.sqrt(sum(y * y for y in b)) or 1.0
+    return dot / (norm_a * norm_b)
 
 
 class Retriever:
@@ -37,3 +108,27 @@ class Retriever:
             scored.append((dot / (q_norm * d_norm), idx))
         scored.sort(key=lambda item: item[0], reverse=True)
         return [self.notes[idx] for _, idx in scored[:k]]
+
+
+class VectorRetriever:
+    def __init__(self, notes: list[str], embedder: Embedder):
+        self.notes = notes
+        self.embedder = embedder
+        self._vectors = embedder.embed(notes) if notes else []
+
+    def search(self, query: str, k: int = 8) -> list[str]:
+        if not self.notes:
+            return []
+        query_vec = self.embedder.embed([query])[0]
+        scored = sorted(((_cosine(query_vec, vec), idx) for idx, vec in enumerate(self._vectors)), reverse=True)
+        return [self.notes[idx] for _, idx in scored[:k]]
+
+
+def build_retriever(notes: list[str]) -> RetrieverProtocol:
+    embedder = make_embedder()
+    if embedder is not None:
+        try:
+            return VectorRetriever(notes, embedder)
+        except Exception:
+            pass
+    return Retriever(notes)

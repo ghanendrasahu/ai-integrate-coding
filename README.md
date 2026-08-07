@@ -29,9 +29,11 @@ A self-driving software engineering agent that turns a single task prompt into a
 
 - **Autonomous workflow** — Research → Build → Verify → Upgrade, with no manual steps in between.
 - **Chrome as a RAG knowledge base** — the agent asks itself the relevant questions from your prompt, searches the web in a real Chrome browser, reads pages, and stores the findings as persistent research notes that feed every later decision.
-- **Semantic research retrieval** — instead of dumping the whole knowledge base into context, only the top-K notes most relevant to the current task and phase are retrieved each turn (TF-IDF based, no external services), keeping long research sessions bounded.
+- **Semantic research retrieval** — instead of dumping the whole knowledge base into context, only the top-K notes most relevant to the current task and phase are retrieved each turn. Uses dense embeddings (OpenAI `text-embedding-3-small` or Ollama `nomic-embed-text`) when available, with an automatic TF-IDF fallback — so it works with or without an embedding API.
+- **Task-keyed memory** — research notes are stored per task under `research_notes/<task-slug>.md`, so separate tasks in the same working directory keep independent knowledge bases that persist across runs.
 - **Parallel tool execution** — when the model issues several tool calls in one response (common during research), they run concurrently for faster research, with thread-safe note and browser handling.
-- **Persistent project memory** — research notes are saved to `research_notes.md` in the working directory, so interrupted runs resume without redoing research.
+- **Streaming LLM output** — `--stream` prints the model's reasoning live to the console instead of only showing tool results.
+- **Sandboxed command execution** — `--sandbox` blocks destructive shell commands (denylist) and confines file tools to the working directory; when Docker is available it runs commands inside an isolated container (`AGENT_SANDBOX_IMAGE`).
 - **Conversation summarization** — when the conversation hits its message cap, older context is compressed by the LLM into a summary instead of being dropped, preserving decisions across long phases.
 - **Config file + `.env`** — settings load from `agent.toml`, `.env`, and environment variables, with CLI flags taking precedence (see [Configuration](#configuration)).
 - **Run log** — every run is teed to `agent_run.log` in the working directory for debugging.
@@ -129,6 +131,8 @@ All configuration is provided through environment variables. **No secrets are ha
 | `AGENT_MODEL` | `gpt-4o` | Model name to use. |
 | `AGENT_PROVIDER` | *(auto)* | Set to `ollama` to force the local Ollama backend. Auto-detected when no key is configured. |
 | `OLLAMA_BASE` | `http://localhost:11434/v1` | URL of a local Ollama server. |
+| `AGENT_EMBED_MODEL` | `text-embedding-3-small` | Embedding model for RAG retrieval (OpenAI) or `nomic-embed-text` (Ollama). |
+| `AGENT_SANDBOX_IMAGE` | `python:3.11-slim` | Docker image used for sandboxed command execution. |
 
 ### OpenAI
 
@@ -175,6 +179,8 @@ use_browser = true
 headless = true
 max_steps = 40
 review_gates = false
+stream = false
+sandbox = false
 log_file = "agent_run.log"
 
 [llm]
@@ -216,6 +222,12 @@ python main.py --no-browser "write a python script that parses CSV files"
 # Point the run log somewhere specific, or disable it
 python main.py --log run.log "..."
 python main.py --no-log "..."
+
+# Stream the model's reasoning live to the console
+python main.py --stream "build a cli todo app"
+
+# Sandbox command execution (denylist + Docker isolation when available)
+python main.py --sandbox "build a web scraper"
 ```
 
 ## CLI Reference
@@ -223,8 +235,8 @@ python main.py --no-log "..."
 ```
 usage: autonomous-agent [-h] [--workdir WORKDIR] [--interactive] [--no-browser]
                         [--headless] [--show-browser] [--model MODEL]
-                        [--max-steps MAX_STEPS] [--review-gates] [--log LOG]
-                        [--no-log]
+                        [--max-steps MAX_STEPS] [--review-gates] [--stream]
+                        [--sandbox] [--log LOG] [--no-log]
                         prompt [prompt ...]
 ```
 
@@ -239,6 +251,8 @@ usage: autonomous-agent [-h] [--workdir WORKDIR] [--interactive] [--no-browser]
 | `--model NAME` | env | Override the LLM model for this run. |
 | `--max-steps N` | `40` | Override the maximum tool steps allowed per phase. |
 | `--review-gates` | off | Pause between phases and ask for approval (continue/skip/abort). |
+| `--stream` | off | Stream the model's reasoning live to the console. |
+| `--sandbox` | off | Sandbox command execution (destructive-command denylist, Docker isolation when available). |
 | `--log PATH` | `agent_run.log` | Write the run log to this file (relative to the workdir). |
 | `--no-log` | off | Do not write a run log file. |
 
@@ -279,8 +293,8 @@ python main.py "build a python script that downloads stock prices and generates 
 │   ├── cli.py               CLI parsing, config merging, run-log tee
 │   ├── config.py            agent.toml / env / CLI configuration resolution
 │   ├── llm.py               Provider-agnostic LLM client with tool calling
-│   ├── retrieval.py         TF-IDF retriever for the research notes knowledge base
-│   └── tools.py             Tool schemas and executor (web, file, shell, notes, finish)
+│   ├── retrieval.py         RAG retriever: dense embeddings (OpenAI/Ollama) with TF-IDF fallback
+│   └── tools.py             Tool schemas and executor (web, file, shell, notes, finish, sandbox)
 └── tests/
     ├── fakes.py             Scripted fake LLM used to test the phase loop offline
     ├── test_agent.py        End-to-end phase loop tests (no API key needed)
@@ -299,7 +313,7 @@ The LLM can call the following tools during any phase:
 | --- | --- |
 | `web_search` | Search the web using Chrome; returns titles, URLs, and snippets. |
 | `web_open` | Open a specific URL in Chrome and return its readable text. |
-| `append_note` | Save one research finding into the persistent knowledge base (RAG notes). |
+| `append_note` | Save one research finding into the persistent knowledge base (RAG notes), keyed by task. |
 | `list_dir` | List files in a directory. |
 | `read_file` | Read a text file. |
 | `write_file` | Create or overwrite a file (UTF-8, parent dirs auto-created). |
@@ -353,7 +367,7 @@ Syntax check:
 python -m py_compile main.py agent\*.py
 ```
 
-Current status: **31 tests passing**, **0 type errors / 0 warnings**.
+Current status: **44 tests passing**, **0 type errors / 0 warnings**.
 
 ## Troubleshooting
 
@@ -361,6 +375,7 @@ Current status: **31 tests passing**, **0 type errors / 0 warnings**.
 | --- | --- |
 | `No LLM backend configured` | Set `AGENT_API_KEY`, add it to `.env`, or set `AGENT_PROVIDER=ollama` with Ollama running. |
 | `playwright` / `openai` import not resolved in the editor | Install `requirements.txt` in the interpreter your editor uses, or point Pylance at it via `.vscode/settings.json`. |
+| `rm` / `del` destructive flags | Blocked by the sandbox denylist. |
 | `Executable doesn't exist` / Chrome launch failure | Install Chrome, or run `playwright install chromium` for the fallback browser. |
 | `Ask the user is disabled` | Run with `--interactive`. |
 | Review gates paused | Type Enter to continue, `s` to skip the remaining phases, or `a` to abort. |
@@ -370,10 +385,10 @@ Current status: **31 tests passing**, **0 type errors / 0 warnings**.
 
 The following are planned or under consideration:
 
-- **Embedding-based RAG** — swap the TF-IDF retriever for dense embeddings (OpenAI/Ollama) for stronger semantic recall.
-- **Deeper project memory** — reuse research notes across separate tasks in the same workdir, keyed by task.
-- **Streaming LLM output** — show the model's reasoning live instead of only tool results.
-- **Sandboxed command execution** — run generated commands in an isolated environment for safety.
+- **Persistent run history** — store every phase's decisions in a queryable timeline to support cross-project planning.
+- **Multi-agent orchestration** — split a large task across specialized sub-agents (researcher, builder, verifier).
+- **Rerankers & hybrid search** — combine dense + sparse retrieval with a cross-encoder reranker for even stronger recall.
+- **Cache-aware builds** — reuse previously fetched web content and LLM responses to cut cost and latency.
 
 ## Contributing
 

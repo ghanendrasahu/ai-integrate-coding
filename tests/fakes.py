@@ -42,6 +42,18 @@ class FakeLLM:
         self.summary_calls = 0
 
     def chat(self, messages, tools=None, temperature=0.2):
+        message = self._next(messages, temperature)
+        return message
+
+    def chat_stream(self, messages, tools=None, temperature=0.2, on_delta=None):
+        message = self._next(messages, temperature)
+        if message.content:
+            for piece in message.content:
+                if on_delta is not None:
+                    on_delta(piece)
+        return message
+
+    def _next(self, messages, temperature=0.2):
         last_user = next(m for m in reversed(messages) if m["role"] == "user")
         content = last_user["content"]
         if content.startswith("Summarize the following agent conversation history"):

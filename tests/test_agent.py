@@ -19,7 +19,9 @@ def test_agent_writes_project_and_notes(monkeypatch, tmp_path):
     agent = Agent(task="build a hello app", workdir=str(tmp_path), use_browser=False, max_steps=12)
     agent.run()
     assert (tmp_path / "app.py").exists()
-    assert (tmp_path / "research_notes.md").exists()
+    notes = list((tmp_path / "research_notes").glob("*.md"))
+    assert len(notes) == 1
+    assert notes[0].name == "build-a-hello-app.md"
 
 
 class ParallelLLM(FakeLLM):
@@ -53,7 +55,7 @@ def test_parallel_tool_calls_execute_all(monkeypatch, tmp_path):
     assert "VERIFY complete" in report
     assert (tmp_path / "file_0_0.txt").exists()
     assert (tmp_path / "file_0_1.txt").exists()
-    notes = (tmp_path / "research_notes.md").read_text(encoding="utf-8")
+    notes = (tmp_path / "research_notes" / "hello.md").read_text(encoding="utf-8")
     assert "note 0-0" in notes
     assert "note 0-1" in notes
 
@@ -114,3 +116,19 @@ def test_review_gates_abort(monkeypatch, tmp_path):
     report = agent.run()
     assert "aborted by user after RESEARCH phase" in report
     assert "BUILD complete" not in report
+
+
+def test_streaming_mode_runs_all_phases(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(agent_module, "LLMClient", FakeLLM)
+    agent = Agent(task="hello", workdir=str(tmp_path), use_browser=False, max_steps=12, stream=True)
+    report = agent.run()
+    assert "RESEARCH complete" in report
+    assert "UPGRADE complete" in report
+
+
+def test_sandbox_flag_passed_to_executor(monkeypatch, tmp_path):
+    monkeypatch.setattr(agent_module, "LLMClient", FakeLLM)
+    agent = Agent(task="hello", workdir=str(tmp_path), use_browser=False, max_steps=12, sandbox=True)
+    assert agent.executor.sandbox is True
+    report = agent.run()
+    assert "RESEARCH complete" in report

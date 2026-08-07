@@ -26,6 +26,8 @@ def resolve_config(args, toml_path: str | None = None) -> dict:
         "headless": bool(agent_cfg.get("headless", True)),
         "max_steps": int(agent_cfg.get("max_steps", 40) or 40),
         "review_gates": bool(agent_cfg.get("review_gates", False)),
+        "stream": bool(agent_cfg.get("stream", False)),
+        "sandbox": bool(agent_cfg.get("sandbox", False)),
         "log_file": str(agent_cfg.get("log_file", "agent_run.log")),
         "model": str(llm_cfg.get("model", "") or ""),
         "provider": str(llm_cfg.get("provider", "") or ""),
@@ -53,6 +55,10 @@ def resolve_config(args, toml_path: str | None = None) -> dict:
         cfg["model"] = args.model
     if getattr(args, "review_gates", False):
         cfg["review_gates"] = True
+    if getattr(args, "stream", False):
+        cfg["stream"] = True
+    if getattr(args, "sandbox", False):
+        cfg["sandbox"] = True
     if getattr(args, "log", None):
         cfg["log_file"] = args.log
 
