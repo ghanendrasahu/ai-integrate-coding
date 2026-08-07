@@ -1,0 +1,16 @@
+# Copy to agent.toml (gitignored) to configure the agent.
+# Precedence: CLI flags > environment variables > agent.toml > defaults.
+# Secrets (API keys) should only be set via environment variables or .env.
+
+[agent]
+interactive = false
+use_browser = true
+headless = true
+max_steps = 40
+review_gates = false
+log_file = "agent_run.log"
+
+[llm]
+model = "gpt-4o"
+provider = ""
+api_base = ""

@@ -32,7 +32,12 @@ A self-driving software engineering agent that turns a single task prompt into a
 - **Semantic research retrieval** — instead of dumping the whole knowledge base into context, only the top-K notes most relevant to the current task and phase are retrieved each turn (TF-IDF based, no external services), keeping long research sessions bounded.
 - **Parallel tool execution** — when the model issues several tool calls in one response (common during research), they run concurrently for faster research, with thread-safe note and browser handling.
 - **Persistent project memory** — research notes are saved to `research_notes.md` in the working directory, so interrupted runs resume without redoing research.
-- **`.env` configuration** — provider settings load from a `.env` file automatically (see [Configuration](#configuration)).
+- **Conversation summarization** — when the conversation hits its message cap, older context is compressed by the LLM into a summary instead of being dropped, preserving decisions across long phases.
+- **Config file + `.env`** — settings load from `agent.toml`, `.env`, and environment variables, with CLI flags taking precedence (see [Configuration](#configuration)).
+- **Run log** — every run is teed to `agent_run.log` in the working directory for debugging.
+- **Human review gates** — optional checkpoints between phases (`--review-gates`) where you can continue, skip the rest, or abort.
+- **CI-ready output** — generated projects are instructed to include a GitHub Actions CI workflow with install/lint/test steps.
+- **Installable package** — works as `python main.py`, `python -m agent`, or the installed `autonomous-agent` command.
 - **Ground-truth code, not guesses** — versions, APIs, and best practices come from live research instead of the model's memory.
 - **Self-verifying** — runs installs, builds, lints, tests, and actually starts the application, reading the full output and fixing every error it finds.
 - **Self-upgrading** — critiques its own work (performance, security, correctness, maintainability, tests, deployment) and iterates until the result is production-grade.
@@ -85,12 +90,27 @@ Then install the dependencies:
 pip install -r requirements.txt
 ```
 
+Or install the agent as a package (recommended — also gives you the `autonomous-agent` command):
+
+```bash
+pip install -e .
+```
+
+You can then launch the agent any of these three ways:
+
+```bash
+python main.py "..."
+python -m agent "..."
+autonomous-agent "..."
+```
+
 Dependencies:
 
 | Package | Purpose |
 | --- | --- |
 | `openai` | LLM client (works with OpenAI, Gemini, Ollama, and any OpenAI-compatible API) |
 | `playwright` | Chrome automation for web research |
+| `python-dotenv` | Loads configuration from a `.env` file |
 
 If Chrome is not available, install Playwright's bundled browser as a fallback:
 
@@ -144,6 +164,27 @@ python main.py "..."
 
 > `.env` is gitignored and never committed. Only `.env.example` (the template) is tracked.
 
+### Using `agent.toml`
+
+Copy `agent.toml.example` to `agent.toml` for file-based configuration:
+
+```toml
+[agent]
+interactive = false
+use_browser = true
+headless = true
+max_steps = 40
+review_gates = false
+log_file = "agent_run.log"
+
+[llm]
+model = "gpt-4o"
+provider = ""
+api_base = ""
+```
+
+Precedence (highest wins): **CLI flags > environment variables > `agent.toml` > defaults**. Secrets (API keys) should only live in environment variables or `.env`.
+
 ## Usage
 
 ### Quick start
@@ -163,11 +204,18 @@ python main.py --workdir C:\path\to\project "build a CLI password manager"
 # Let the agent ask you questions when it is truly blocked
 python main.py --interactive "build a chatbot with streaming responses"
 
+# Pause between phases for human approval
+python main.py --review-gates "build an e-commerce API"
+
 # Watch Chrome research in a visible window
 python main.py --show-browser "build a web scraper for product prices"
 
 # No browser research at all (relies on the model's own knowledge)
 python main.py --no-browser "write a python script that parses CSV files"
+
+# Point the run log somewhere specific, or disable it
+python main.py --log run.log "..."
+python main.py --no-log "..."
 ```
 
 ## CLI Reference
@@ -175,7 +223,8 @@ python main.py --no-browser "write a python script that parses CSV files"
 ```
 usage: autonomous-agent [-h] [--workdir WORKDIR] [--interactive] [--no-browser]
                         [--headless] [--show-browser] [--model MODEL]
-                        [--max-steps MAX_STEPS]
+                        [--max-steps MAX_STEPS] [--review-gates] [--log LOG]
+                        [--no-log]
                         prompt [prompt ...]
 ```
 
@@ -189,6 +238,9 @@ usage: autonomous-agent [-h] [--workdir WORKDIR] [--interactive] [--no-browser]
 | `--show-browser` | off | Run Chrome with a visible window. |
 | `--model NAME` | env | Override the LLM model for this run. |
 | `--max-steps N` | `40` | Override the maximum tool steps allowed per phase. |
+| `--review-gates` | off | Pause between phases and ask for approval (continue/skip/abort). |
+| `--log PATH` | `agent_run.log` | Write the run log to this file (relative to the workdir). |
+| `--no-log` | off | Do not write a run log file. |
 
 ## Examples
 
@@ -211,17 +263,21 @@ python main.py "build a python script that downloads stock prices and generates 
 
 ```
 .
-├── main.py                  CLI entry point
-├── requirements.txt         Python dependencies
+├── main.py                  Thin CLI wrapper
+├── requirements.txt         Runtime dependencies
 ├── requirements-dev.txt     Development dependencies (pytest, pyright)
-├── pyproject.toml           Tool configuration (pytest, pyright)
+├── pyproject.toml           Packaging + tool configuration (pytest, pyright)
 ├── .env.example             Environment variable template
+├── agent.toml.example       File-based configuration template
 ├── .gitignore
 ├── .vscode/settings.json    Local editor settings (not committed)
 ├── agent/
 │   ├── __init__.py          Package exports
+│   ├── __main__.py          `python -m agent` entry point
 │   ├── agent.py             Orchestrator: research → build → verify → upgrade loop
 │   ├── browser.py           Chrome automation for web search and page extraction (RAG)
+│   ├── cli.py               CLI parsing, config merging, run-log tee
+│   ├── config.py            agent.toml / env / CLI configuration resolution
 │   ├── llm.py               Provider-agnostic LLM client with tool calling
 │   ├── retrieval.py         TF-IDF retriever for the research notes knowledge base
 │   └── tools.py             Tool schemas and executor (web, file, shell, notes, finish)
@@ -229,6 +285,8 @@ python main.py "build a python script that downloads stock prices and generates 
     ├── fakes.py             Scripted fake LLM used to test the phase loop offline
     ├── test_agent.py        End-to-end phase loop tests (no API key needed)
     ├── test_browser.py      Chrome/Playwright search and extraction tests
+    ├── test_cli.py          CLI flags, run-log and report output
+    ├── test_config.py       Configuration precedence tests
     ├── test_retrieval.py    Knowledge-base retriever tests
     └── test_tools.py        Tool executor tests (files, shell, notes persistence)
 ```
@@ -262,6 +320,11 @@ The LLM can call the following tools during any phase:
 1. Add the phase instructions to the `PHASES` dict in `agent/agent.py`.
 2. Add the phase name to the sequence tuple in `Agent.run()`.
 
+### Add a configuration option
+
+1. Add the default to `resolve_config()` in `agent/config.py`.
+2. Expose it as a CLI flag in `agent/cli.py` if it should be overridable per run.
+
 ## Verification & Testing
 
 Install the dev dependencies:
@@ -290,16 +353,17 @@ Syntax check:
 python -m py_compile main.py agent\*.py
 ```
 
-Current status: **20 tests passing**, **0 type errors / 0 warnings**.
+Current status: **31 tests passing**, **0 type errors / 0 warnings**.
 
 ## Troubleshooting
 
 | Problem | Solution |
 | --- | --- |
-| `No LLM backend configured` | Set `AGENT_API_KEY`, or `AGENT_PROVIDER=ollama` with Ollama running. |
+| `No LLM backend configured` | Set `AGENT_API_KEY`, add it to `.env`, or set `AGENT_PROVIDER=ollama` with Ollama running. |
 | `playwright` / `openai` import not resolved in the editor | Install `requirements.txt` in the interpreter your editor uses, or point Pylance at it via `.vscode/settings.json`. |
 | `Executable doesn't exist` / Chrome launch failure | Install Chrome, or run `playwright install chromium` for the fallback browser. |
 | `Ask the user is disabled` | Run with `--interactive`. |
+| Review gates paused | Type Enter to continue, `s` to skip the remaining phases, or `a` to abort. |
 | Garbled Unicode in the console | The agent forces UTF-8 output; ensure your terminal supports UTF-8 (Windows Terminal recommended). |
 
 ## Roadmap
@@ -307,12 +371,9 @@ Current status: **20 tests passing**, **0 type errors / 0 warnings**.
 The following are planned or under consideration:
 
 - **Embedding-based RAG** — swap the TF-IDF retriever for dense embeddings (OpenAI/Ollama) for stronger semantic recall.
-- **Conversation summarization** — compress old tool results with the LLM instead of dropping them at the message cap.
-- **Config file support** — a `agent.toml` file as an alternative to environment variables.
-- **CI/CD output** — generate GitHub Actions workflows for generated projects.
-- **Human-in-the-loop review gates** — optional approval checkpoints between phases.
-- **Packaging** — installable via `pyproject.toml` with a `python -m` entry point.
-- **Run log file** — tee the agent's output to `agent_run.log` for debugging.
+- **Deeper project memory** — reuse research notes across separate tasks in the same workdir, keyed by task.
+- **Streaming LLM output** — show the model's reasoning live instead of only tool results.
+- **Sandboxed command execution** — run generated commands in an isolated environment for safety.
 
 ## Contributing
 

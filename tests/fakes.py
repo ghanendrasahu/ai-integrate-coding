@@ -38,11 +38,22 @@ TOOL_ARGS = {
 class FakeLLM:
     def __init__(self, model=None):
         self.counts = {}
+        self.pending_phase = None
+        self.summary_calls = 0
 
     def chat(self, messages, tools=None, temperature=0.2):
         last_user = next(m for m in reversed(messages) if m["role"] == "user")
-        phase = next((p for p in PHASE_PLANS if f"PHASE: {p}" in last_user["content"]), None)
-        assert phase is not None
+        content = last_user["content"]
+        if content.startswith("Summarize the following agent conversation history"):
+            self.summary_calls += 1
+            return FakeMessage(content="[summarized context]", tool_calls=[])
+        phase = next((p for p in PHASE_PLANS if content.startswith(f"PHASE: {p}")), None)
+        if phase:
+            self.pending_phase = phase
+        elif self.pending_phase is not None:
+            phase = self.pending_phase
+        else:
+            return FakeMessage(content="ok", tool_calls=[])
         plan = PHASE_PLANS[phase]
         idx = self.counts.get(phase, 0)
         self.counts[phase] = idx + 1

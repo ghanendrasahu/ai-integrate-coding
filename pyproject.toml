@@ -1,3 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autonomous-ai-agent"
+version = "0.2.0"
+description = "Autonomous AI coding agent with Chrome research, build, verify and upgrade phases."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "openai>=1.40.0",
+    "playwright>=1.44.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+autonomous-agent = "agent.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["agent*"]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]

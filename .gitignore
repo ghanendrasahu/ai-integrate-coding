@@ -33,3 +33,5 @@ Thumbs.db
 
 # Agent output
 workspace/
+agent.toml
+*.log

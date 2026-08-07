@@ -30,6 +30,8 @@ GENERAL RULES:
 - Only use ask_user when truly blocked (missing secret or genuinely ambiguous requirement).
   Prefer a reasonable, well-documented decision instead.
 - Keep messages efficient: read files only as needed, prefer targeted edits.
+- For generated projects, include a CI workflow (.github/workflows/ci.yml) whenever the stack
+  supports it (Python/Node/etc.), with dependency install, lint/type-check and test steps.
 
 KNOWLEDGE BASE (research notes):
 {notes}
@@ -109,6 +111,7 @@ class Agent:
         headless: bool = True,
         model: str | None = None,
         max_steps: int | None = None,
+        review_gates: bool = False,
     ):
         self.task = task
         self.workdir = os.path.abspath(workdir)
@@ -116,6 +119,7 @@ class Agent:
         self.interactive = interactive
         self.use_browser = use_browser
         self.max_steps = max_steps or 40
+        self.review_gates = review_gates
         self.executor = ToolExecutor(self.workdir, use_browser, interactive, headless=headless)
         self.llm = LLMClient(model=model)
 
@@ -165,7 +169,7 @@ class Agent:
                 messages.append({"role": "assistant", "content": message.content or ""})
                 messages.append({"role": "user", "content": "Continue. Call the appropriate tool to make progress. When the phase is complete, call finish."})
 
-            messages = self._trim_messages(messages)
+            messages = self._compact(messages, name)
 
         print(_safe(f"[WARN] {name.upper()} phase exceeded {self.max_steps} steps; forcing phase end."))
         return done_summary or f"Phase {name} ended after hitting the step limit."
@@ -183,18 +187,43 @@ class Agent:
         with ThreadPoolExecutor(max_workers=min(len(tool_calls), MAX_PARALLEL)) as pool:
             return list(pool.map(self._handle_tool_call, tool_calls))
 
-    def _trim_messages(self, messages: list[dict]) -> list[dict]:
+    def _compact(self, messages: list[dict], phase: str) -> list[dict]:
         if len(messages) <= MAX_MESSAGES:
             return messages
-        keep_system = messages[0]
-        if messages[-1]["role"] == "tool":
-            tail = messages[-1:]
-            body = messages[1:-1]
-        else:
-            tail = []
-            body = messages[1:]
-        body = body[-(MAX_MESSAGES - 1 - len(tail)):]
-        return [keep_system] + body + tail
+        last_assistant = -1
+        for i, message in enumerate(messages):
+            if message["role"] == "assistant":
+                last_assistant = i
+        if last_assistant <= 1:
+            return messages[:MAX_MESSAGES]
+        keep = messages[last_assistant:]
+        old = messages[1:last_assistant]
+        summary = self._summarize(old, phase)
+        if summary:
+            return [messages[0], {"role": "user", "content": f"[Compressed summary of earlier context]\n{summary}"}] + keep
+        return [messages[0]] + keep
+
+    def _summarize(self, old: list[dict], phase: str) -> str:
+        try:
+            prompt = (
+                "Summarize the following agent conversation history concisely, keeping important "
+                f"decisions, facts, and tool outputs from the {phase} phase. Return only the summary.\n\n"
+                + json.dumps(old, ensure_ascii=True)[:20000]
+            )
+            message = self.llm.chat([{"role": "user", "content": prompt}], temperature=0.0)
+            return (message.content or "").strip()
+        except Exception:
+            return ""
+
+    def _review_gate(self, phase: str, summary: str) -> str:
+        print(_safe(f"\n[GATE] {phase.upper()} phase complete."))
+        print(_safe(f"Summary: {summary[:500]}"))
+        answer = input("[YOU] (Enter=continue, s=skip remaining phases, a=abort) ").strip().lower()
+        if answer in ("s", "skip"):
+            return "skip"
+        if answer in ("a", "abort"):
+            return "abort"
+        return "continue"
 
     def _chat(self, messages: list[dict]):
         last_error = None
@@ -214,6 +243,14 @@ class Agent:
             for phase in ("research", "build", "verify", "upgrade"):
                 summary = self._run_phase(phase)
                 report.append(f"## {phase.upper()}\n{summary}\n")
+                if self.review_gates and phase != "upgrade":
+                    decision = self._review_gate(phase, summary or "")
+                    if decision == "abort":
+                        report.append(f"(aborted by user after {phase.upper()} phase)")
+                        break
+                    if decision == "skip":
+                        report.append("(remaining phases skipped by user)")
+                        break
         finally:
             self.executor.close()
         return "\n".join(report)
