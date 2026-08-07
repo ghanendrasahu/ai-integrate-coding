@@ -1,8 +1,10 @@
 # Autonomous AI Coding Agent
 
 [![CI](https://github.com/ghanendrasahu/ai_intigrate_coding/actions/workflows/ci.yml/badge.svg)](https://github.com/ghanendrasahu/ai_intigrate_coding/actions/workflows/ci.yml)
-[![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CD](https://github.com/ghanendrasahu/ai_intigrate_coding/actions/workflows/cd.yml/badge.svg)](https://github.com/ghanendrasahu/ai_intigrate_coding/actions/workflows/cd.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![Tests](https://img.shields.io/badge/tests-66%20passing-brightgreen)](tests)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A self-driving software engineering agent that turns a single task prompt into a **production-grade project**. It researches the web using real Chrome automation (RAG-style grounding), builds the project from those researched facts, verifies it by running real commands, and keeps upgrading it until it is genuinely production-ready — with no human in the loop.
 
@@ -16,6 +18,7 @@ A self-driving software engineering agent that turns a single task prompt into a
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Usage](#usage)
+- [CI / CD](#ci--cd)
 - [CLI Reference](#cli-reference)
 - [Examples](#examples)
 - [Web Frontend](#web-frontend)
@@ -77,8 +80,10 @@ The agent is an orchestrator that runs four sequential phases. Each phase is a t
 | --- | --- |
 | Operating system | Windows / macOS / Linux |
 | Python | **3.11+** (3.10+ should work; 3.11 recommended) |
-| Chrome | Google Chrome installed (used by Playwright for research) |
+| Chrome | Google Chrome installed (used by Playwright for research; not needed if using `playwright install chromium`) |
 | LLM backend | One of: OpenAI API key, Gemini API key, OpenAI-compatible endpoint, or a local Ollama server |
+
+> **Docker path:** no local Python, Chrome, or Playwright is needed — the [Docker image](#run-with-docker-easiest) bundles all of it.
 
 ## Installation
 
@@ -121,6 +126,7 @@ Dependencies:
 | `openai` | LLM client (works with OpenAI, Gemini, Ollama, and any OpenAI-compatible API) |
 | `playwright` | Chrome automation for web research |
 | `python-dotenv` | Loads configuration from a `.env` file |
+| `flask` | Web frontend (`frontend/`) |
 
 If Chrome is not available, install Playwright's bundled browser as a fallback:
 
@@ -137,7 +143,7 @@ All configuration is provided through environment variables. **No secrets are ha
 | `AGENT_API_KEY` | — | API key for the LLM provider (OpenAI or Gemini). |
 | `AGENT_API_BASE` | — | Custom base URL for OpenAI-compatible endpoints. |
 | `AGENT_MODEL` | `gpt-4o` | Model name to use. |
-| `AGENT_PROVIDER` | *(auto)* | Set to `ollama` to force the local Ollama backend. Auto-detected when no key is configured. |
+| `AGENT_PROVIDER` | *(auto)* | Force a provider: `openai`, `openai-compatible`, or `ollama`. Auto-detected from the surrounding env when left empty. |
 | `OLLAMA_BASE` | `http://localhost:11434/v1` | URL of a local Ollama server. |
 | `AGENT_EMBED_MODEL` | `text-embedding-3-small` | Embedding model for RAG retrieval (OpenAI) or `nomic-embed-text` (Ollama). |
 | `AGENT_SANDBOX_IMAGE` | `python:3.11-slim` | Docker image used for sandboxed command execution. |
@@ -214,7 +220,7 @@ docker compose up --build
 docker compose run --rm cli "build a Flask REST API for a task tracker with JWT auth"
 ```
 
-Prebuilt image: every `v*` release tag is **also published as a ready-to-run image** to GitHub Container Registry, so you can skip the local build entirely:
+Alternatively, skip the local build and pull the image published by [CD](#ci--cd):
 
 ```bash
 docker pull ghcr.io/ghanendrasahu/ai_intigrate_coding:latest
@@ -254,11 +260,6 @@ make clean                 # remove Python caches
 
 Both `test`/`lint` auto-use `.venv/Scripts/python` when present.
 
-### CI / CD
-
-- **CI** (`.github/workflows/ci.yml`) — on every push/PR: runs the full test suite and builds the Docker image.
-- **CD** (`.github/workflows/cd.yml`) — on every `v*` tag: builds the image and **publishes it to GHCR** (`ghcr.io/ghanendrasahu/ai_intigrate_coding:<tag>` and `:latest`).
-
 ### Quick start (local, without Docker)
 
 ```bash
@@ -297,6 +298,23 @@ python main.py --stream "build a cli todo app"
 # Sandbox command execution (denylist + Docker isolation when available)
 python main.py --sandbox "build a web scraper"
 ```
+
+## CI / CD
+
+The repository ships two GitHub Actions workflows. Both run on every relevant event automatically and have been verified end-to-end on the live repo.
+
+| Workflow | Trigger | What it does |
+| --- | --- | --- |
+| **CI** (`.github/workflows/ci.yml`) | every push / PR to `main` | Installs deps + Chromium, runs the full test suite, and builds the Docker image. |
+| **CD** (`.github/workflows/cd.yml`) | every `v*` tag | Builds the image and publishes it to **GitHub Container Registry** as both `<tag>` and `latest`. |
+
+```bash
+# Pull the ready-to-run image published by CD (no build needed)
+docker pull ghcr.io/ghanendrasahu/ai_intigrate_coding:latest
+docker run -p 5000:5000 --env-file .env ghcr.io/ghanendrasahu/ai_intigrate_coding:latest
+```
+
+The GHCR image is **private** while the repository is private (pull with a token that has `read:packages`). If the repo is made public, the package can be made public too.
 
 ## CLI Reference
 
@@ -409,6 +427,7 @@ Tune which services are queried with `WEB_AI_PROVIDERS` (e.g. `WEB_AI_PROVIDERS=
 │   └── tools.py             Tool schemas and executor (web, file, shell, notes, finish, sandbox)
 ├── frontend/
 │   ├── app.py               Flask web UI: configure, launch, and live-stream agent runs (SSE)
+│   ├── requirements.txt     Frontend runtime deps (Flask, etc.)
 │   ├── templates/index.html Browser UI for launching and monitoring a run
 │   ├── tests/test_app.py    Frontend API and streaming tests
 │   └── README.md            Frontend setup and usage
@@ -418,8 +437,10 @@ Tune which services are queried with `WEB_AI_PROVIDERS` (e.g. `WEB_AI_PROVIDERS=
     ├── test_browser.py      Chrome/Playwright search and extraction tests
     ├── test_cli.py          CLI flags, run-log and report output
     ├── test_config.py       Configuration precedence tests
+    ├── test_history.py      Run-history timeline tests
     ├── test_retrieval.py    Knowledge-base retriever tests
-    └── test_tools.py        Tool executor tests (files, shell, notes persistence)
+    ├── test_tools.py        Tool executor tests (files, shell, notes persistence)
+    └── test_weblm.py        Web AI aggregator tests
 ```
 
 ## Tool Reference
@@ -498,6 +519,7 @@ Current status: **66 tests passing** (58 core + 8 frontend), **0 type errors / 0
 | `Ask the user is disabled` | Run with `--interactive`. |
 | Review gates paused | Type Enter to continue, `s` to skip the remaining phases, or `a` to abort. |
 | Garbled Unicode in the console | The agent forces UTF-8 output; ensure your terminal supports UTF-8 (Windows Terminal recommended). |
+| Can't pull the GHCR image | The package is private while the repo is private. Authenticate with `docker login ghcr.io` using a token that has `read:packages`, or make the package public (and the repo public if desired). |
 
 ## Roadmap
 
@@ -518,4 +540,4 @@ Contributions are welcome. Please:
 
 ## License
 
-Private project — all rights reserved.
+Released under the [MIT License](LICENSE) — Copyright (c) 2026 ghanendrasahu. You are free to use, modify, and distribute the code with attribution.

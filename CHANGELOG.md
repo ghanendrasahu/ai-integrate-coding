@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Released versions correspond to git tags.
 
+## [0.8.4] - 2026-08-07
+
+### Fixed
+
+- `pyproject.toml` dependencies were missing `flask`, so `pip install -e .` produced an install whose web frontend could not start. Flask is now a declared dependency (matches `requirements.txt`).
+- README professionalized: license section corrected to MIT (it still said "Private project — all rights reserved"), added CD badge and tests badge, added missing `frontend/requirements.txt` / `test_history.py` / `test_weblm.py` to the project tree, added Flask to the dependencies table, clarified `AGENT_PROVIDER` values and the Docker system-requirement shortcut, moved CI/CD into its own top-level section (with a TOC entry), removed the duplicated GHCR pull block, and added a GHCR-troubleshooting row.
+
 ## [0.8.3] - 2026-08-07
 
 ### Changed
