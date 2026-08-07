@@ -27,3 +27,10 @@ jobs:
 
       - name: Run test suite
         run: python -m pytest tests frontend/tests -q
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t ai-agent .

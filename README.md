@@ -1,5 +1,8 @@
 # Autonomous AI Coding Agent
 
+[![CI](https://github.com/ghanendrasahu/AI_Intigrate_Coding/actions/workflows/ci.yml/badge.svg)](https://github.com/ghanendrasahu/AI_Intigrate_Coding/actions/workflows/ci.yml)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/)
+
 A self-driving software engineering agent that turns a single task prompt into a **production-grade project**. It researches the web using real Chrome automation (RAG-style grounding), builds the project from those researched facts, verifies it by running real commands, and keeps upgrading it until it is genuinely production-ready — with no human in the loop.
 
 ---
@@ -163,7 +166,7 @@ set AGENT_MODEL=qwen2.5-coder:14b
 
 ### Using a `.env` file
 
-Instead of setting shell variables every time, create a `.env` file in the project root with the variables from the table above (fill in your key):
+Instead of setting shell variables every time, create a `.env` file in the project root (start from the `.env.example` template) with the variables from the table above:
 
 ```bash
 AGENT_API_KEY=sk-...
@@ -374,7 +377,8 @@ Tune which services are queried with `WEB_AI_PROVIDERS` (e.g. `WEB_AI_PROVIDERS=
 ├── Makefile                 Make shortcuts (up / cli / test / lint / clean) for Git Bash, WSL, macOS, Linux
 ├── make.ps1                 Same shortcuts for Windows PowerShell (no `make` needed)
 ├── .dockerignore            Files excluded from the image build
-├── .github/workflows/ci.yml CI: full test suite on every push / PR
+├── .github/workflows/ci.yml CI: tests + Docker build on every push / PR
+├── .env.example              Config template (copy to `.env` and fill in)
 ├── .gitignore
 ├── agent/
 │   ├── __init__.py          Package exports

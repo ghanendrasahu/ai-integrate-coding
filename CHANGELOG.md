@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. Released versions correspond to git tags.
 
+## [0.7.3] - 2026-08-07
+
+### Added
+
+- `.env.example` configuration template (placeholder values, no secrets; un-ignored via `!.env.example` so it ships without exposing the real `.env`).
+- CI now also builds the Docker image on every push/PR (catches packaging regressions like the earlier missing-Flask issue) via a new `docker-build` job.
+- README CI + Python version badges.
+
 ## [0.7.2] - 2026-08-07
 
 ### Added
