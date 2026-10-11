@@ -1,10 +1,17 @@
+import tempfile
+
 import app as frontend
 import pytest
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
     frontend.app.config["TESTING"] = True
+    # Unit tests run the launcher without UI auth; production defaults to off.
+    monkeypatch.setattr(frontend, "ALLOW_PUBLIC_LAUNCH", True)
+    monkeypatch.setattr(
+        frontend, "WORKSPACE_ROOT", tempfile.mkdtemp(prefix="agent-test-")
+    )
     with frontend.app.test_client() as client:
         yield client
 
@@ -33,6 +40,30 @@ def test_launch_requires_task(client):
     response = client.post("/api/launch", json={})
     assert response.status_code == 400
     assert "task" in response.get_json()["error"]
+
+
+def test_launch_refused_when_not_configured(client, monkeypatch):
+    monkeypatch.setattr(frontend, "ALLOW_PUBLIC_LAUNCH", False)
+    response = client.post("/api/launch", json={"task": "hello"})
+    assert response.status_code == 403
+
+
+def test_launch_token_required_when_configured(client, monkeypatch):
+    monkeypatch.setattr(frontend, "ALLOW_PUBLIC_LAUNCH", True)
+    monkeypatch.setattr(frontend, "ACCESS_TOKEN", "s3cret")
+    denied = client.post("/api/launch", json={"task": "hello"})
+    assert denied.status_code == 401
+    allowed = client.get("/api/health")
+    assert allowed.status_code == 200
+
+
+def test_safe_workdir_rejects_escape(client, tmp_path):
+    monkeypatch_target = tmp_path / "outside"
+    monkeypatch_target.mkdir()
+    response = client.post(
+        "/api/launch", json={"task": "hello", "workdir": str(monkeypatch_target)}
+    )
+    assert response.status_code == 400
 
 
 def test_build_argv():
@@ -73,7 +104,7 @@ def test_launch_creates_run_and_streams(monkeypatch, client, clean_runs):
     run = clean_runs[run_id]
     assert run.task == "hello"
     assert run.args["stream"] is True
-    assert run.args["sandbox"] is False
+    assert run.args["sandbox"] is True  # web launches are always sandboxed
 
     stream = client.get(f"/api/runs/{run_id}/stream")
     assert stream.status_code == 200

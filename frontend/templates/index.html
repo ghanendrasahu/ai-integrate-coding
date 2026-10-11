@@ -268,15 +268,21 @@
 
         <div class="field">
           <label for="max_steps">Max steps per phase</label>
-          <input type="text" id="max_steps" placeholder="Default: 40">
+          <input type="text" id="max_steps" placeholder="Default: 20 (max 60)">
+        </div>
+
+        <div class="field">
+          <label for="access_token">Access token</label>
+          <input type="password" id="access_token" placeholder="Required when UI_ACCESS_TOKEN is set" autocomplete="off">
         </div>
 
         <div class="checks">
           <label class="check"><input type="checkbox" id="no_browser"> Disable browser research</label>
           <label class="check"><input type="checkbox" id="stream" checked> Stream reasoning</label>
-          <label class="check"><input type="checkbox" id="sandbox"> Sandbox commands</label>
-          <label class="check"><input type="checkbox" id="interactive"> Interactive</label>
+          <label class="check"><input type="checkbox" id="sandbox" checked disabled> Sandbox commands (always on)</label>
         </div>
+
+        <p class="hint">Web runs execute inside the workspace with the sandbox enabled and a step cap.</p>
 
         <button id="launch" class="btn" type="button">Launch agent</button>
         <p id="status" class="status" aria-live="polite"></p>
@@ -319,6 +325,22 @@
   const reportBody = document.getElementById("report_body");
   const historyEl = document.getElementById("history");
 
+  function accessToken() {
+    return document.getElementById("access_token").value.trim();
+  }
+
+  function authHeaders(extra) {
+    const headers = extra || {};
+    const token = accessToken();
+    if (token) headers["X-Access-Token"] = token;
+    return headers;
+  }
+
+  function tokenQuery() {
+    const token = accessToken();
+    return token ? `?token=${encodeURIComponent(token)}` : "";
+  }
+
   function setStatus(text, state) {
     statusEl.textContent = text;
     if (state) {
@@ -342,7 +364,7 @@
 
   async function loadHistory() {
     try {
-      const res = await fetch("/api/history");
+      const res = await fetch("/api/history", { headers: authHeaders() });
       const data = await res.json();
       historyEl.textContent = "";
       const runs = data.runs || [];
@@ -395,7 +417,7 @@
     reportEl.hidden = true;
     setStatus("Loading run...", "");
     try {
-      const res = await fetch(`/api/runs/${runId}`);
+      const res = await fetch(`/api/runs/${runId}`, { headers: authHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "failed to load");
       (data.events || []).forEach((ev) => {
@@ -431,8 +453,7 @@
       max_steps: document.getElementById("max_steps").value,
       no_browser: document.getElementById("no_browser").checked,
       stream: document.getElementById("stream").checked,
-      sandbox: document.getElementById("sandbox").checked,
-      interactive: document.getElementById("interactive").checked,
+      sandbox: true,
     };
     launchBtn.disabled = true;
     setStatus("Launching agent...", "");
@@ -440,7 +461,7 @@
     try {
       const res = await fetch("/api/launch", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(payload),
       });
       const data = await res.json();
@@ -453,7 +474,7 @@
     }
 
     setStatus("Agent running — streaming output.", "running");
-    const source = new EventSource(`/api/runs/${run_id}/stream`);
+    const source = new EventSource(`/api/runs/${run_id}/stream${tokenQuery()}`);
     source.onmessage = (event) => {
       const msg = JSON.parse(event.data);
       if (msg.type === "line") {

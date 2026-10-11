@@ -1,3 +1,4 @@
+import hmac
 import json
 import os
 import queue
@@ -11,10 +12,61 @@ from flask import Flask, Response, jsonify, render_template, request
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNS_DIR = os.path.join(REPO_ROOT, "workspace", "runs")
 
+# Runs launched from the web UI always execute inside this root, with the
+# sandbox enabled and a hard step cap. They never touch the repository itself.
+WORKSPACE_ROOT = os.path.realpath(
+    os.environ.get(
+        "AGENT_WORKSPACE_ROOT", os.path.join(REPO_ROOT, "workspace", "projects")
+    )
+)
+ACCESS_TOKEN = os.environ.get("UI_ACCESS_TOKEN", "").strip()
+ALLOW_PUBLIC_LAUNCH = os.environ.get("ALLOW_PUBLIC_LAUNCH", "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+}
+MAX_WEB_STEPS = max(1, min(int(os.environ.get("MAX_WEB_STEPS", "20")), 60))
+PUBLIC_API_PATHS = {"/api/health"}
+
 app = Flask(__name__)
 
 RUNS: dict[str, "Run"] = {}
 RUNS_LOCK = threading.Lock()
+
+
+def _provided_token() -> str:
+    """Token from the header, or the query string for EventSource requests."""
+    return (
+        request.headers.get("X-Access-Token") or request.args.get("token", "")
+    ).strip()
+
+
+@app.before_request
+def _guard_api():
+    """Require UI_ACCESS_TOKEN for the API when one is configured."""
+    if not request.path.startswith("/api/") or request.path in PUBLIC_API_PATHS:
+        return None
+    if ACCESS_TOKEN and not hmac.compare_digest(_provided_token(), ACCESS_TOKEN):
+        return jsonify({"error": "Unauthorized. Provide the access token."}), 401
+    return None
+
+
+def _safe_workdir(requested: str, run_id: str) -> str:
+    """Resolve a web request to a directory inside WORKSPACE_ROOT only."""
+    os.makedirs(WORKSPACE_ROOT, exist_ok=True)
+    if not requested:
+        target = os.path.join(WORKSPACE_ROOT, f"run-{run_id}")
+    else:
+        target = (
+            requested
+            if os.path.isabs(requested)
+            else os.path.join(WORKSPACE_ROOT, requested)
+        )
+    target = os.path.realpath(target)
+    if os.path.commonpath([target, WORKSPACE_ROOT]) != WORKSPACE_ROOT:
+        raise ValueError("workdir must stay inside the agent workspace")
+    os.makedirs(target, exist_ok=True)
+    return target
 
 
 def _clean(value) -> str:
@@ -161,22 +213,43 @@ def run_detail(run_id: str):
 
 @app.route("/api/launch", methods=["POST"])
 def launch():
+    if not ACCESS_TOKEN and not ALLOW_PUBLIC_LAUNCH:
+        return (
+            jsonify(
+                {
+                    "error": "Launching is disabled. Set UI_ACCESS_TOKEN to enable "
+                    "authenticated runs (or ALLOW_PUBLIC_LAUNCH=1 for a trusted local demo)."
+                }
+            ),
+            403,
+        )
     data = request.get_json(force=True, silent=True) or {}
     task = _clean(data.get("task"))
     if not task:
         return jsonify({"error": "task is required"}), 400
+    if len(task) > 8000:
+        return jsonify({"error": "task is too long (limit 8000 characters)"}), 400
     run_id = uuid.uuid4().hex[:12]
+    try:
+        workdir = _safe_workdir(_clean(data.get("workdir")), run_id)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    try:
+        requested_steps = int(data.get("max_steps") or MAX_WEB_STEPS)
+    except (TypeError, ValueError):
+        return jsonify({"error": "max_steps must be a number"}), 400
     run = Run(
         run_id=run_id,
         task=task,
-        workdir=_clean(data.get("workdir")),
+        workdir=workdir,
         args={
             "no_browser": bool(data.get("no_browser")),
-            "interactive": bool(data.get("interactive")),
+            "interactive": False,  # no terminal is attached to a web run
             "stream": bool(data.get("stream")),
-            "sandbox": bool(data.get("sandbox")),
+            # Never trust the form here: web runs are always sandboxed.
+            "sandbox": True,
             "model": _clean(data.get("model")),
-            "max_steps": int(data.get("max_steps") or 0) or None,
+            "max_steps": max(1, min(requested_steps, MAX_WEB_STEPS)),
         },
     )
     with RUNS_LOCK:
