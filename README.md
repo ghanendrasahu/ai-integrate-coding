@@ -373,7 +373,16 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Open http://localhost:5000, enter a task, pick options (working directory, model, browser, streaming, sandbox, interactive), and press **Launch agent**. The run streams over Server-Sent Events and the captured output is shown as the final report.
+Open http://localhost:5000, enter a task, pick options (working directory, model, browser, streaming, max steps), and press **Launch agent**. The run streams over Server-Sent Events and the captured output is shown as the final report.
+
+Web launches are hardened: they only run with the sandbox enabled, the working directory must stay inside `AGENT_WORKSPACE_ROOT`, and both the step count and task length are capped. Launching is refused until an access token is configured:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"   # generate UI_ACCESS_TOKEN
+set UI_ACCESS_TOKEN=<the value>
+```
+
+Enter the same token in the **Access token** field. For a trusted local demo only, `ALLOW_PUBLIC_LAUNCH=1` opens the launcher without a token.
 
 Configurable via environment variables:
 
@@ -382,6 +391,10 @@ Configurable via environment variables:
 | `FLASK_HOST` | `127.0.0.1` | Interface the frontend binds to. |
 | `FLASK_PORT` | `5000` | Port the frontend listens on. |
 | `FLASK_DEBUG` | *(off)* | Set to `1` to enable Flask debug mode. |
+| `UI_ACCESS_TOKEN` | *(empty)* | Required for `/api/*` and for launching runs. |
+| `ALLOW_PUBLIC_LAUNCH` | *(off)* | `1` allows unauthenticated launches (trusted local demos only). |
+| `AGENT_WORKSPACE_ROOT` | `./workspace/projects` | Web runs are confined to this directory. |
+| `MAX_WEB_STEPS` | `20` | Hard cap (max 60) on steps per agent phase for web runs. |
 
 The agent subprocess runs from the repository root, so it uses the same `.env` / `agent.toml` and LLM backend as the CLI. Completed runs are recorded under `<workdir>/runs/*.jsonl` and appear in the **Run history** panel, where you can reopen any run's timeline and final report.
 
