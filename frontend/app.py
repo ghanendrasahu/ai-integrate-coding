@@ -51,6 +51,21 @@ def _guard_api():
     return None
 
 
+@app.after_request
+def _security_headers(response):
+    """Apply the fleet's baseline security headers to every response."""
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault(
+        "Permissions-Policy", "camera=(), microphone=(), geolocation=()"
+    )
+    response.headers.setdefault(
+        "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+    )
+    return response
+
+
 def _safe_workdir(requested: str, run_id: str) -> str:
     """Resolve a web request to a directory inside WORKSPACE_ROOT only."""
     os.makedirs(WORKSPACE_ROOT, exist_ok=True)

@@ -36,6 +36,18 @@ def test_health(client):
     assert response.get_json() == {"status": "ok"}
 
 
+def test_security_headers(client):
+    response = client.get("/api/health")
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+    assert (
+        response.headers["Permissions-Policy"]
+        == "camera=(), microphone=(), geolocation=()"
+    )
+    assert response.headers["Strict-Transport-Security"].startswith("max-age=")
+
+
 def test_launch_requires_task(client):
     response = client.post("/api/launch", json={})
     assert response.status_code == 400
