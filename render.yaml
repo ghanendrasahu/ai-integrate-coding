@@ -1,0 +1,31 @@
+# Render blueprint for ai-integrate-coding.
+# Mirrors the live service configuration; inert until an explicit Blueprint Sync.
+# Secret values are declared with sync:false and stay in the Render dashboard.
+services:
+- type: web
+  name: ai-integrate-coding
+  runtime: python
+  plan: free
+  region: oregon
+  branch: main
+  buildCommand: pip install -r requirements.txt
+  startCommand: python frontend/app.py
+  healthCheckPath: /api/health
+  autoDeploy: true
+  envVars:
+  - key: AGENT_API_BASE
+    value: https://api.groq.com/openai/v1
+  - key: AGENT_API_KEY
+    sync: false
+  - key: AGENT_EMBED_MODEL
+    value: text-embedding-3-small
+  - key: AGENT_MODEL
+    value: openai/gpt-oss-20b
+  - key: AGENT_PROVIDER
+    value: ''
+  - key: FLASK_HOST
+    value: 0.0.0.0
+  - key: FLASK_PORT
+    value: '10000'
+  - key: UI_ACCESS_TOKEN
+    sync: false
