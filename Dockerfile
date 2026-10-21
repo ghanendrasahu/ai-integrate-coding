@@ -14,9 +14,10 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Python deps first (better layer caching).
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Python deps from the pinned lock (dev/test/type tools filtered out).
+COPY requirements.lock ./
+RUN grep -vE '^(pytest==|pyright==)' requirements.lock > runtime.lock \
+    && pip install --no-cache-dir -r runtime.lock
 
 # Chromium (headless) for the browser-backed research + web-sourcing tools.
 RUN playwright install --with-deps chromium
