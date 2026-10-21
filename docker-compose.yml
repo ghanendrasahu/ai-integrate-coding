@@ -1,4 +1,4 @@
-# Containerized run for the AI Intigrate Coding agent.
+# Containerized run for the AI Integrate Coding agent.
 #
 # Frontend (web UI, control every run in-browser):
 #   docker compose up --build
@@ -7,8 +7,10 @@
 # CLI (direct terminal control of a single task):
 #   docker compose run --rm cli "build a Flask REST API for a task tracker"
 #
-# Live code is bind-mounted, so edits are picked up without rebuilding (except
-# Python package or Playwright changes, which need `docker compose build`).
+# Application code ships inside the image (rebuild after code changes). Only
+# the agent's run artifacts persist: the bind mount exposes host ./workspace
+# (clone includes it via .gitkeep), so the repository and .env never enter
+# the container filesystem. Secrets still reach the process through env_file.
 services:
   web:
     build: .
@@ -23,7 +25,8 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - .:/app
+      # Run artifacts only - never the whole repo (and never .env).
+      - ./workspace:/app/workspace
     # Optional: expose the host Docker socket so `--sandbox` can spawn command
     # containers. SECURITY WARNING: grants the container root-equivalent access
     # to the host; only enable if you trust the tasks you run.
@@ -36,7 +39,8 @@ services:
     env_file:
       - .env
     volumes:
-      - .:/app
+      # Run artifacts only - never the whole repo (and never .env).
+      - ./workspace:/app/workspace
     # Optional dyno-docker socket for `--sandbox` isolation (see warning above).
     # - /var/run/docker.sock:/var/run/docker.sock
     entrypoint: ["python", "main.py"]

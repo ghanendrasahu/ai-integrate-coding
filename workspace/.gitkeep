@@ -1,0 +1,2 @@
+# Marker so a fresh clone ships the ./workspace bind-mount target (owned by
+# the cloning user, not root-created by docker on first `compose up`).

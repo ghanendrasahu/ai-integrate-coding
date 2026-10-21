@@ -31,8 +31,9 @@ node_modules/
 .DS_Store
 Thumbs.db
 
-# Agent output
-workspace/
+# Agent output (tracked .gitkeep keeps the dir present for bind mounts)
+workspace/*
+!workspace/.gitkeep
 agent.toml
 *.log
 research_notes/
