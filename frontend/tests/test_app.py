@@ -23,6 +23,12 @@ def test_index_renders(client):
     assert "Launch" in body
 
 
+def test_health(client):
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    assert response.get_json() == {"status": "ok"}
+
+
 def test_launch_requires_task(client):
     response = client.post("/api/launch", json={})
     assert response.status_code == 400

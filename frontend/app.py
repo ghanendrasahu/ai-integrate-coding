@@ -87,6 +87,11 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/api/health")
+def health():
+    return jsonify({"status": "ok"})
+
+
 def _load_run(run_id: str) -> list[dict] | None:
     path = os.path.join(RUNS_DIR, f"{run_id}.jsonl")
     if not os.path.exists(path):
