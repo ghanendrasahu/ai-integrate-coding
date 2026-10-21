@@ -1,5 +1,6 @@
-import pytest
 from types import SimpleNamespace
+
+import pytest
 
 from agent.config import load_agent_toml, resolve_config
 

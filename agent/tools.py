@@ -210,7 +210,7 @@ class ToolExecutor:
 
     def _load_notes(self) -> list[str]:
         try:
-            with open(self.notes_path, "r", encoding="utf-8") as fh:
+            with open(self.notes_path, encoding="utf-8") as fh:
                 return [line.strip()[2:] for line in fh if line.startswith("- ")]
         except OSError:
             return []
@@ -331,7 +331,7 @@ class ToolExecutor:
 
     def _exec_read_file(self, args: dict) -> str:
         path = self._abs(args["path"])
-        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        with open(path, encoding="utf-8", errors="replace") as fh:
             return self._trim(fh.read())
 
     def _exec_write_file(self, args: dict) -> str:

@@ -93,7 +93,7 @@ def _load_run(run_id: str) -> list[dict] | None:
         return None
     events: list[dict] = []
     try:
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             for line in fh:
                 if line.strip():
                     events.append(json.loads(line))

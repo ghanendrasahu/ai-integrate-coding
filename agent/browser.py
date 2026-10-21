@@ -5,7 +5,7 @@ from playwright.sync_api import sync_playwright
 
 if TYPE_CHECKING:
     from playwright.sync_api import Browser as PBrowser
-    from playwright.sync_api import BrowserType, Page, Playwright
+    from playwright.sync_api import Page, Playwright
 
 DEFAULT_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -29,9 +29,9 @@ SEARCH_JS = """
 class Browser:
     def __init__(self, headless: bool = True):
         self.headless = headless
-        self._pw: "Playwright | None" = None
-        self._browser: "PBrowser | None" = None
-        self._page: "Page | None" = None
+        self._pw: Playwright | None = None
+        self._browser: PBrowser | None = None
+        self._page: Page | None = None
 
     def _page_instance(self) -> "Page":
         if self._page is None:

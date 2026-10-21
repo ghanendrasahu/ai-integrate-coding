@@ -196,7 +196,7 @@ class Agent:
             messages = self._compact(messages, name)
 
         print(_safe(f"[WARN] {name.upper()} phase exceeded {self.max_steps} steps; forcing phase end."))
-        self.history.record("phase", phase=name, summary=done_summary or f"ended after step limit")
+        self.history.record("phase", phase=name, summary=done_summary or "ended after step limit")
         return done_summary or f"Phase {name} ended after hitting the step limit."
 
     def _handle_tool_call(self, tc) -> tuple:

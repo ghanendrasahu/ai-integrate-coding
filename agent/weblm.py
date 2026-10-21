@@ -127,8 +127,8 @@ class WebAI:
         self.workdir = os.path.abspath(workdir)
         self.headless = headless
         self.providers = [p for p in (providers or DEFAULT_PROVIDERS) if p in PROVIDERS]
-        self._pw: "PWPlaywright | None" = None
-        self._context: "PWContext | None" = None
+        self._pw: PWPlaywright | None = None
+        self._context: PWContext | None = None
         self._profile_dir = os.path.join(self.workdir, "web_ai_profile")
 
     def _start(self) -> None:

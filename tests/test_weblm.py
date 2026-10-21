@@ -1,4 +1,4 @@
-from agent.weblm import WebAI, best_answer, format_answers, _score, _trim_answer
+from agent.weblm import WebAI, _score, _trim_answer, best_answer, format_answers
 
 
 def test_best_answer_picks_code_rich_reply():

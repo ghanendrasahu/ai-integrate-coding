@@ -1,6 +1,5 @@
-import pytest
-
 import app as frontend
+import pytest
 
 
 @pytest.fixture
@@ -92,7 +91,6 @@ def _write_run(runs_dir, run_id, events):
 
 
 def test_history_lists_runs(monkeypatch, client, tmp_path):
-    import json
 
     import app as frontend
 
@@ -117,7 +115,6 @@ def test_history_lists_runs(monkeypatch, client, tmp_path):
 
 
 def test_run_detail(monkeypatch, client, tmp_path):
-    import json
 
     import app as frontend
 

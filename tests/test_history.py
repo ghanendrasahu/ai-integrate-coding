@@ -1,7 +1,6 @@
 import json
 
 import agent.agent as agent_module
-import pytest
 from agent import Agent
 from agent.history import RunHistory, _slugify
 from tests.fakes import FakeLLM
