@@ -36,6 +36,10 @@ COPY --chown=appuser . .
 ENV FLASK_HOST=0.0.0.0 \
     FLASK_PORT=5000
 
+# Run as the unprivileged user - the appuser was created above and owns the
+# code, the workspace bind target and the browser cache.
+USER appuser
+
 EXPOSE 5000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
