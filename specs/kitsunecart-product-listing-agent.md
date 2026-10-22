@@ -1,8 +1,8 @@
 # Spec: Kitsunecart - autonomous product-listing agent
 
-> **Provenance.** This specification was developed as the standalone
-> `kitsunecart` repository and is kept here as a design note. The repository
-> has been retired; this document is the surviving artifact.
+> **Provenance.** This specification was developed as the standalone kitsunecart repository and is kept here as a design note. kitsunecart has since been **implemented as a production project** (see the link below); this document remains the original specification it was built from.
+
+> **Implementation:** github.com/ghanendrasahu/kitsunecart - domain-first pipeline (image extraction, competitor research, price recommendation, multilingual copy, validation, marketplace publishing) with ports and adapters, SQLite store with migrations, audit trail, idempotency and a versioned API.
 
 ## What it specifies
 
