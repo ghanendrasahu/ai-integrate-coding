@@ -4,97 +4,312 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Autonomous AI Coding Agent</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%238B93FF'/%3E%3Cpath d='M12 10l-4 6 4 6M20 10l4 6-4 6' stroke='%230B0D12' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root { color-scheme: dark; }
+  :root {
+    --bg: #0B0D12;
+    --surface: #111521;
+    --surface-2: #151A27;
+    --border: #232B3D;
+    --border-strong: #3A4661;
+    --text: #E8EBF5;
+    --muted: #9AA4B8;
+    --primary: #8B93FF;
+    --success: #46D39A;
+    --warning: #F2B544;
+    --danger: #F17C7C;
+    --radius: 12px;
+    --font: "Inter", "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", Consolas, monospace;
+    color-scheme: dark;
+  }
   * { box-sizing: border-box; }
+  html, body { min-height: 100%; }
   body {
-    margin: 0; font-family: "Segoe UI", system-ui, sans-serif;
-    background: #0f172a; color: #e2e8f0; min-height: 100vh;
+    margin: 0;
+    background:
+      radial-gradient(1100px 480px at 15% -10%, rgba(139, 147, 255, .10), transparent 60%),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
   }
-  header { padding: 1rem 1.5rem; border-bottom: 1px solid #1e293b; background: #0b1220; }
-  header h1 { margin: 0; font-size: 1.2rem; letter-spacing: 0.3px; }
-  header p { margin: 0.2rem 0 0; color: #64748b; font-size: 0.8rem; }
-  main { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
-  section { background: #111c31; border: 1px solid #1e293b; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; }
-  h2 { margin: 0 0 1rem; font-size: 1rem; color: #93c5fd; }
-  label { display: block; font-size: 0.8rem; color: #94a3b8; margin: 0.8rem 0 0.25rem; }
-  input[type="text"], textarea, select {
-    width: 100%; padding: 0.55rem 0.7rem; border-radius: 6px;
-    border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 0.9rem;
+  .shell { max-width: 1180px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding-bottom: 1.25rem; margin-bottom: 2.2rem;
+    border-bottom: 1px solid var(--border);
   }
-  textarea { font-family: Consolas, monospace; }
-  .row { display: flex; gap: 1rem; flex-wrap: wrap; }
-  .row > div { flex: 1; min-width: 180px; }
-  .checks { display: flex; gap: 1.25rem; margin-top: 0.9rem; flex-wrap: wrap; }
-  .checks label { display: flex; align-items: center; gap: 0.4rem; margin: 0; color: #cbd5e1; }
-  button {
-    margin-top: 1.25rem; padding: 0.6rem 1.4rem; border: 0; border-radius: 6px;
-    background: #2563eb; color: #fff; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+  .brand { display: flex; align-items: center; gap: .8rem; min-width: 0; }
+  .mark {
+    width: 38px; height: 38px; flex: 0 0 auto;
+    display: grid; place-items: center;
+    border-radius: 11px;
+    background: linear-gradient(135deg, #A8AEFF, #6F77E8);
+    box-shadow: 0 10px 26px -14px rgba(139, 147, 255, .9);
   }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  #log {
-    height: 420px; overflow-y: auto; background: #0b1220; border: 1px solid #1e293b;
-    border-radius: 6px; padding: 0.75rem; font-family: Consolas, monospace; font-size: 0.8rem;
-    white-space: pre-wrap; word-break: break-all;
+  .brand-name { font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
+  .brand-sub { font-size: 12px; color: var(--muted); }
+  .badge {
+    display: inline-flex; align-items: center; gap: .4rem; flex: 0 0 auto;
+    padding: .32rem .7rem; border-radius: 999px;
+    border: 1px solid rgba(70, 211, 154, .32);
+    background: rgba(70, 211, 154, .08);
+    color: var(--success); font-size: 12px; font-weight: 600;
   }
-  #status { font-size: 0.85rem; color: #34d399; margin: 0.5rem 0; }
-  #report { margin-top: 0.75rem; }
-  #report pre {
-    background: #0b1220; border: 1px solid #1e293b; border-radius: 6px;
-    padding: 0.75rem; white-space: pre-wrap; font-size: 0.8rem;
+  .badge::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--success);
   }
-  #history { max-height: 240px; overflow-y: auto; }
-  .run-item { padding: 0.6rem; border-bottom: 1px solid #1e293b; cursor: pointer; }
-  .run-item:hover { background: #16233d; }
-  .run-item .t { font-weight: 600; color: #e2e8f0; }
-  .run-item .m { font-size: 0.75rem; color: #64748b; }
+
+  /* ---------- hero ---------- */
+  .hero { margin-bottom: 1.8rem; }
+  .hero h1 {
+    margin: 0 0 .5rem; font-size: 34px; line-height: 1.12;
+    letter-spacing: -.03em; font-weight: 700;
+  }
+  .hero p { margin: 0; max-width: 66ch; color: var(--muted); font-size: 15px; }
+
+  /* ---------- layout ---------- */
+  .layout {
+    display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 1.25rem; align-items: start;
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.4rem;
+  }
+  .card h2 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
+  .hint { margin: .3rem 0 1.25rem; color: var(--muted); font-size: 13px; }
+
+  /* ---------- form ---------- */
+  .field { margin-bottom: 1rem; }
+  .field:last-of-type { margin-bottom: 0; }
+  label { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: .38rem; }
+  input[type="text"], textarea {
+    width: 100%; padding: .62rem .75rem;
+    border-radius: 9px; border: 1px solid var(--border);
+    background: #0B0D12; color: var(--text);
+    font-family: var(--font); font-size: 14px; line-height: 1.5;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  textarea { min-height: 96px; resize: vertical; }
+  input::placeholder, textarea::placeholder { color: #667089; }
+  input[type="text"]:focus, textarea:focus {
+    outline: none; border-color: rgba(139, 147, 255, .65);
+    box-shadow: 0 0 0 3px rgba(139, 147, 255, .14);
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
+  .checks { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-top: 1.1rem; }
+  .check {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .55rem .65rem; border: 1px solid var(--border); border-radius: 9px;
+    background: #0B0D12; font-size: 13px; color: var(--text); cursor: pointer;
+  }
+  .check:hover { border-color: var(--border-strong); }
+  .check input { accent-color: var(--primary); width: 15px; height: 15px; margin: 0; }
+  .btn {
+    width: 100%; margin-top: 1.25rem; padding: .72rem 1rem;
+    border: 1px solid transparent; border-radius: 10px;
+    background: var(--primary); color: #0B0D12;
+    font-family: var(--font); font-size: 14px; font-weight: 650;
+    cursor: pointer; transition: filter .15s, transform .15s;
+  }
+  .btn:hover { filter: brightness(1.06); }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: .55; cursor: not-allowed; filter: none; }
+  .btn-ghost {
+    width: auto; margin: 0; padding: .38rem .75rem;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface-2); color: var(--text);
+    font-size: 12px; font-weight: 600;
+  }
+  .btn-ghost:hover { border-color: var(--border-strong); filter: none; }
+  .status {
+    display: flex; align-items: center; gap: .5rem;
+    margin: .9rem 0 0; min-height: 20px;
+    font-size: 13px; color: var(--muted);
+  }
+  .status:empty { display: none; }
+  .status::before {
+    content: ""; width: 7px; height: 7px; flex: 0 0 auto;
+    border-radius: 50%; background: var(--muted);
+  }
+  .status[data-state="running"] { color: var(--warning); }
+  .status[data-state="running"]::before {
+    background: var(--warning);
+    box-shadow: 0 0 0 4px rgba(242, 181, 68, .12);
+  }
+  .status[data-state="done"] { color: var(--success); }
+  .status[data-state="done"]::before { background: var(--success); }
+  .status[data-state="error"] { color: var(--danger); }
+  .status[data-state="error"]::before { background: var(--danger); }
+
+  /* ---------- log ---------- */
+  .log {
+    height: 552px; overflow: auto;
+    padding: 1rem; border-radius: 10px;
+    border: 1px solid var(--border); background: #080A0F;
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.7;
+    color: #C9D0E0; white-space: pre-wrap; word-break: break-word;
+  }
+  .log:empty::before {
+    content: "Agent output appears here once a run starts.";
+    color: var(--muted); font-family: var(--font); font-size: 13px;
+  }
+  .report { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+  .report h3 { margin: 0 0 .5rem; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .report pre {
+    margin: 0; padding: .85rem; max-height: 320px; overflow: auto;
+    border: 1px solid var(--border); border-radius: 9px; background: #080A0F;
+    font-family: var(--mono); font-size: 12px; white-space: pre-wrap;
+  }
+
+  /* ---------- history ---------- */
+  .history { margin-top: 1.25rem; }
+  .history-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; margin-bottom: 1rem;
+  }
+  .run-list { display: flex; flex-direction: column; gap: .55rem; max-height: 340px; overflow: auto; }
+  .run-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: .85rem 1rem; border: 1px solid var(--border); border-radius: 10px;
+    background: #0B0D12; cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .run-item:hover { border-color: var(--border-strong); background: var(--surface-2); }
+  .run-item .t { font-size: 14px; font-weight: 550; color: var(--text); margin-bottom: .25rem; }
+  .run-item .m { font-size: 12px; color: var(--muted); }
+  .run-empty {
+    padding: 1.5rem 1rem; text-align: center;
+    border: 1px dashed var(--border); border-radius: 10px;
+    color: var(--muted); font-size: 13px;
+  }
+  .phases { display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; justify-content: flex-end; }
+  .phase {
+    display: inline-block; padding: .12rem .48rem; border-radius: 999px;
+    border: 1px solid rgba(139, 147, 255, .28);
+    background: rgba(139, 147, 255, .12);
+    color: #B9C0FF; font-size: 11px; font-weight: 600; letter-spacing: .01em;
+  }
+  .phase.warn { border-color: rgba(242, 181, 68, .3); background: rgba(242, 181, 68, .1); color: var(--warning); }
+
+  footer {
+    display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+    margin-top: 2.5rem; padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 12px;
+  }
+
+  /* ---------- mobile ---------- */
+  @media (max-width: 900px) {
+    .shell { padding: 1.25rem 1rem 3rem; }
+    .topbar { flex-direction: column; align-items: flex-start; margin-bottom: 1.6rem; }
+    .hero h1 { font-size: 26px; }
+    .layout { grid-template-columns: 1fr; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .checks { grid-template-columns: 1fr; }
+    .log { height: 380px; }
+    .run-item { flex-direction: column; align-items: flex-start; }
+    .phases { justify-content: flex-start; }
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>Autonomous AI Coding Agent</h1>
-  <p>Configure the agent, launch it, and watch research &rarr; build &rarr; verify &rarr; upgrade live.</p>
-</header>
-<main>
-  <section>
-    <h2>Launch</h2>
-    <label for="task">Task prompt</label>
-    <textarea id="task" rows="3" placeholder="e.g. build a Flask REST API for a task tracker with JWT auth and tests"></textarea>
-    <div class="row">
+<div class="shell">
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B0D12" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="8 6 3 12 8 18"></polyline>
+          <polyline points="16 6 21 12 16 18"></polyline>
+        </svg>
+      </span>
       <div>
-        <label for="workdir">Working directory</label>
-        <input type="text" id="workdir" placeholder="(optional, default: ./workspace)">
-      </div>
-      <div>
-        <label for="model">Model</label>
-        <input type="text" id="model" placeholder="(optional, default from config)">
-      </div>
-      <div>
-        <label for="max_steps">Max steps per phase</label>
-        <input type="text" id="max_steps" placeholder="(optional, default: 40)">
+        <div class="brand-name">Autonomous AI Coding Agent</div>
+        <div class="brand-sub">Research, build, verify and upgrade — autonomously</div>
       </div>
     </div>
-    <div class="checks">
-      <label><input type="checkbox" id="no_browser"> Disable browser research</label>
-      <label><input type="checkbox" id="stream" checked> Stream reasoning</label>
-      <label><input type="checkbox" id="sandbox"> Sandbox commands</label>
-      <label><input type="checkbox" id="interactive"> Interactive</label>
+    <span class="badge">Live workspace</span>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Describe the change. Watch it ship.</h1>
+      <p>Give the agent a task, then follow each phase as it researches the codebase, writes the change, runs the checks and reports back.</p>
+    </section>
+
+    <div class="layout">
+      <section class="card">
+        <h2>Launch a run</h2>
+        <p class="hint">The agent works inside the repository and streams its progress.</p>
+
+        <label for="task">Task prompt</label>
+        <textarea id="task" rows="3" placeholder="e.g. build a Flask REST API for a task tracker with JWT auth and tests"></textarea>
+
+        <div class="grid-2" style="margin-top: 1rem;">
+          <div class="field">
+            <label for="workdir">Working directory</label>
+            <input type="text" id="workdir" placeholder="Default: ./workspace">
+          </div>
+          <div class="field">
+            <label for="model">Model</label>
+            <input type="text" id="model" placeholder="Default from config">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="max_steps">Max steps per phase</label>
+          <input type="text" id="max_steps" placeholder="Default: 40">
+        </div>
+
+        <div class="checks">
+          <label class="check"><input type="checkbox" id="no_browser"> Disable browser research</label>
+          <label class="check"><input type="checkbox" id="stream" checked> Stream reasoning</label>
+          <label class="check"><input type="checkbox" id="sandbox"> Sandbox commands</label>
+          <label class="check"><input type="checkbox" id="interactive"> Interactive</label>
+        </div>
+
+        <button id="launch" class="btn" type="button">Launch agent</button>
+        <p id="status" class="status" aria-live="polite"></p>
+      </section>
+
+      <section class="card">
+        <h2>Live log</h2>
+        <p class="hint">Streaming reasoning, tool calls and phase summaries.</p>
+        <div id="log" class="log"></div>
+        <div id="report" class="report" hidden>
+          <h3>Final report</h3>
+          <pre id="report_body"></pre>
+        </div>
+      </section>
     </div>
-    <button id="launch">Launch agent</button>
-    <p id="status"></p>
-  </section>
 
-  <section>
-    <h2>Live log</h2>
-    <div id="log"></div>
-    <div id="report" hidden><h2>Final report</h2><pre id="report_body"></pre></div>
-  </section>
+    <section class="card history">
+      <div class="history-head">
+        <div>
+          <h2>Run history</h2>
+          <p class="hint" style="margin: .25rem 0 0;">Open a previous run to inspect its output.</p>
+        </div>
+        <button id="refresh_history" class="btn btn-ghost" type="button">Refresh</button>
+      </div>
+      <div id="history" class="run-list"></div>
+    </section>
+  </main>
 
-  <section>
-    <h2>Run history <button id="refresh_history" style="margin:0 0 0 0.5rem; padding:0.2rem 0.8rem;">Refresh</button></h2>
-    <div id="history"></div>
-  </section>
-</main>
+  <footer>
+    <span>Agent workspace · every run is stored locally</span>
+    <span>Research → build → verify → upgrade</span>
+  </footer>
+</div>
 
 <script>
   const logEl = document.getElementById("log");
@@ -104,9 +319,25 @@
   const reportBody = document.getElementById("report_body");
   const historyEl = document.getElementById("history");
 
+  function setStatus(text, state) {
+    statusEl.textContent = text;
+    if (state) {
+      statusEl.dataset.state = state;
+    } else {
+      delete statusEl.dataset.state;
+    }
+  }
+
   function fmtTs(ts) {
     if (!ts) return "";
     return new Date(ts * 1000).toLocaleString();
+  }
+
+  function emptyState(text) {
+    const el = document.createElement("div");
+    el.className = "run-empty";
+    el.textContent = text;
+    return el;
   }
 
   async function loadHistory() {
@@ -116,32 +347,53 @@
       historyEl.textContent = "";
       const runs = data.runs || [];
       if (!runs.length) {
-        historyEl.textContent = "(no runs yet)";
+        historyEl.appendChild(emptyState("No runs yet. Launch the agent and it will appear here."));
         return;
       }
       runs.forEach((run) => {
         const item = document.createElement("div");
         item.className = "run-item";
+
+        const left = document.createElement("div");
         const title = document.createElement("div");
         title.className = "t";
         title.textContent = run.task;
         const meta = document.createElement("div");
         meta.className = "m";
-        meta.textContent = `${fmtTs(run.started)} — phases: ${(run.phases || []).join(", ") || "-"}${run.has_report ? "" : " (incomplete)"}`;
-        item.appendChild(title);
-        item.appendChild(meta);
+        meta.textContent = `${fmtTs(run.started)} — ${(run.phases || []).length} phase${(run.phases || []).length === 1 ? "" : "s"}`;
+        left.appendChild(title);
+        left.appendChild(meta);
+
+        const phases = document.createElement("div");
+        phases.className = "phases";
+        (run.phases || []).forEach((phase) => {
+          const chip = document.createElement("span");
+          chip.className = "phase";
+          chip.textContent = phase;
+          phases.appendChild(chip);
+        });
+        if (!run.has_report) {
+          const chip = document.createElement("span");
+          chip.className = "phase warn";
+          chip.textContent = "incomplete";
+          phases.appendChild(chip);
+        }
+
+        item.appendChild(left);
+        item.appendChild(phases);
         item.addEventListener("click", () => showRun(run.run_id, run));
         historyEl.appendChild(item);
       });
     } catch (err) {
-      historyEl.textContent = "Failed to load history: " + err.message;
+      historyEl.textContent = "";
+      historyEl.appendChild(emptyState("Could not load history: " + err.message));
     }
   }
 
   async function showRun(runId, run) {
     logEl.textContent = "";
     reportEl.hidden = true;
-    statusEl.textContent = "Loading run...";
+    setStatus("Loading run...", "");
     try {
       const res = await fetch(`/api/runs/${runId}`);
       const data = await res.json();
@@ -158,9 +410,9 @@
           appendLine(`# ${ev.task}\n`);
         }
       });
-      statusEl.textContent = run ? "Loaded past run." : "";
+      setStatus(run ? "Loaded past run." : "", "done");
     } catch (err) {
-      statusEl.textContent = "ERROR: " + err.message;
+      setStatus("Could not load the run: " + err.message, "error");
     }
   }
 
@@ -183,7 +435,7 @@
       interactive: document.getElementById("interactive").checked,
     };
     launchBtn.disabled = true;
-    statusEl.textContent = "Launching agent...";
+    setStatus("Launching agent...", "");
     let run_id;
     try {
       const res = await fetch("/api/launch", {
@@ -195,29 +447,27 @@
       if (!res.ok) throw new Error(data.error || "launch failed");
       run_id = data.run_id;
     } catch (err) {
-      statusEl.textContent = "ERROR: " + err.message;
+      setStatus("Could not launch the agent: " + err.message, "error");
       launchBtn.disabled = false;
       return;
     }
 
-    statusEl.textContent = "Running...";
+    setStatus("Agent running — streaming output.", "running");
     const source = new EventSource(`/api/runs/${run_id}/stream`);
     source.onmessage = (event) => {
       const msg = JSON.parse(event.data);
       if (msg.type === "line") {
         appendLine(msg.text);
       } else if (msg.type === "done") {
-        statusEl.textContent = "Finished.";
+        setStatus("Run finished.", "done");
         appendLine("\n[run finished]");
-        reportBody.textContent = logEl.textContent;
-        reportEl.hidden = false;
         source.close();
         launchBtn.disabled = false;
         loadHistory();
       }
     };
     source.onerror = () => {
-      statusEl.textContent = "Connection to agent closed.";
+      setStatus("Connection to the agent closed.", "error");
       launchBtn.disabled = false;
     };
   }
