@@ -8,6 +8,10 @@
 
 A self-driving software engineering agent that turns a single task prompt into a **production-grade project**. It researches the web using real Chrome automation (RAG-style grounding), builds the project from those researched facts, verifies it by running real commands, and keeps upgrading it until it is genuinely production-ready — with no human in the loop.
 
+> **Live demo:** https://ai-integrate-coding.onrender.com
+>
+> Free-tier hosting: the first load after idle can take 30-60 seconds.
+
 ---
 
 ## Table of Contents
