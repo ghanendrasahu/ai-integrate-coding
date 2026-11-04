@@ -29,6 +29,7 @@ class Run:
         self.args = args
         self.process: subprocess.Popen | None = None
         self.lines: queue.Queue = queue.Queue()
+        self.output: list[str] = []
         self.done = False
 
 
@@ -57,6 +58,7 @@ def _pump(run: Run) -> None:
     if stdout is not None:
         try:
             for line in iter(stdout.readline, ""):
+                run.output.append(line)
                 run.lines.put(("line", line))
         except AttributeError:
             pass
@@ -138,9 +140,23 @@ def history():
 @app.route("/api/runs/<run_id>")
 def run_detail(run_id: str):
     events = _load_run(run_id)
-    if events is None:
-        return jsonify({"error": "unknown run"}), 404
-    return jsonify({"run_id": run_id, "events": events})
+    if events is not None:
+        return jsonify({"run_id": run_id, "events": events})
+    # A just-launched run is live in memory until the agent writes its
+    # timestamped history file, so resolve its buffered output here instead
+    # of returning 404 for an id that /api/launch just handed out.
+    run = RUNS.get(run_id)
+    if run is not None:
+        return jsonify(
+            {
+                "run_id": run_id,
+                "task": run.task,
+                "workdir": run.workdir,
+                "done": run.done,
+                "events": [{"type": "line", "text": line} for line in list(run.output)],
+            }
+        )
+    return jsonify({"error": "unknown run"}), 404
 
 
 @app.route("/api/launch", methods=["POST"])

@@ -80,7 +80,21 @@ def test_launch_creates_run_and_streams(monkeypatch, client, clean_runs):
     assert stream.mimetype == "text/event-stream"
     body = stream.get_data(as_text=True)
     assert "PHASE: RESEARCH" in body
-    assert "type\": \"done" in body
+    assert 'type": "done' in body
+
+
+def test_run_detail_resolves_live_run(monkeypatch, client, clean_runs, tmp_path):
+    monkeypatch.setattr(frontend, "RUNS_DIR", str(tmp_path))
+    monkeypatch.setattr(frontend, "_launch", lambda run: None)
+    response = client.post("/api/launch", json={"task": "live task"})
+    run_id = response.get_json()["run_id"]
+    clean_runs[run_id].output.append("working\n")
+
+    detail = client.get(f"/api/runs/{run_id}")
+    assert detail.status_code == 200
+    payload = detail.get_json()
+    assert payload["task"] == "live task"
+    assert payload["events"][0]["text"] == "working\n"
 
 
 def test_stream_unknown_run(client):
