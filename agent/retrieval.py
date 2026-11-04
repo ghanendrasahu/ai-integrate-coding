@@ -65,9 +65,14 @@ class OllamaEmbedder:
 
 def make_embedder() -> Embedder | None:
     provider = os.getenv("AGENT_PROVIDER", "").lower()
+    base_url = os.getenv("AGENT_API_BASE", "").lower()
     try:
         if provider == "ollama":
             return OllamaEmbedder()
+        # Groq's OpenAI-compatible endpoint does not serve embedding models.
+        # Returning None makes build_retriever() use the local BM25 retriever.
+        if "groq.com" in base_url:
+            return None
         if os.getenv("AGENT_API_KEY") or os.getenv("OPENAI_API_KEY"):
             return OpenAIEmbedder()
     except Exception:
