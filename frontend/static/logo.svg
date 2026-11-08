@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Autonomous AI Coding Agent">
+  <defs>
+    <linearGradient id="neon" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8DF7E4"/>
+      <stop offset=".42" stop-color="#2ED9F0"/>
+      <stop offset="1" stop-color="#3B82F6"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.15" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect x=".75" y=".75" width="62.5" height="62.5" rx="14" fill="#0C0F16" stroke="#212A3D" stroke-width="1.5"/>
+
+  <g fill="none" stroke="url(#neon)" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)">
+    <!-- brain silhouette with bottom stem notch -->
+    <path d="M32 12.5C31.1 10 29.2 8.2 26.9 7.9C24.5 7.6 22.3 9.2 20.9 11.4C20.5 12.4 20.3 13.5 20 14.5C15.5 15.5 12 19 12 23.5C8.5 26 7 30 8 34C6.8 38.5 9 43 12.8 45C13.6 49.8 17.6 53.4 22.6 54.2C25 56.6 28.4 57.6 31 56.6L32 51.5L33 56.6C35.6 57.6 39 56.6 41.4 54.2C46.4 53.4 50.4 49.8 51.2 45C55 43 57.2 38.5 56 34C57 30 55.5 26 52 23.5C52 19 48.5 15.5 44 14.5C43.7 13.5 43.5 12.4 43.1 11.4C41.7 9.2 39.5 7.6 37.1 7.9C34.8 8.2 32.9 10 32 12.5Z"/>
+    <!-- longitudinal fissure feeding the apex -->
+    <path d="M32 12.5V20"/>
+    <!-- upper lobe traces -->
+    <path d="M20 14.5L24 18.5V22"/>
+    <path d="M44 14.5L40 18.5V22"/>
+    <!-- mid traces into the legs -->
+    <path d="M8 30H17L21 26H30.1"/>
+    <path d="M56 30H47L43 26H33.9"/>
+    <!-- lower traces into the feet -->
+    <path d="M8.6 40H18L22 44H24.5"/>
+    <path d="M55.4 40H46L42 44H39.5"/>
+    <!-- base chevron -->
+    <path d="M15.2 50.1H22L26 46.1H32"/>
+    <path d="M48.8 50.1H42L38 46.1H32"/>
+    <!-- central "A" -->
+    <path d="M32 20L24.5 44"/>
+    <path d="M32 20L39.5 44"/>
+    <path d="M27 36H37"/>
+  </g>
+
+  <g fill="url(#neon)">
+    <circle cx="32" cy="20" r="2.7"/>
+    <circle cx="24" cy="22" r="1.9"/>
+    <circle cx="40" cy="22" r="1.9"/>
+    <circle cx="30.1" cy="26" r="1.9"/>
+    <circle cx="33.9" cy="26" r="1.9"/>
+    <circle cx="27" cy="36" r="1.9"/>
+    <circle cx="37" cy="36" r="1.9"/>
+    <circle cx="24.5" cy="44" r="2"/>
+    <circle cx="39.5" cy="44" r="2"/>
+    <circle cx="32" cy="46.1" r="2.1"/>
+  </g>
+</svg>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Autonomous AI Coding Agent</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%238B93FF'/%3E%3Cpath d='M12 10l-4 6 4 6M20 10l4 6-4 6' stroke='%230B0D12' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='logo.svg') }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -49,12 +49,12 @@
   }
   .brand { display: flex; align-items: center; gap: .8rem; min-width: 0; }
   .mark {
-    width: 38px; height: 38px; flex: 0 0 auto;
+    width: 40px; height: 40px; flex: 0 0 auto;
     display: grid; place-items: center;
-    border-radius: 11px;
-    background: linear-gradient(135deg, #A8AEFF, #6F77E8);
-    box-shadow: 0 10px 26px -14px rgba(139, 147, 255, .9);
+    border-radius: 12px;
+    box-shadow: 0 12px 28px -16px rgba(46, 217, 240, .85);
   }
+  .mark img { display: block; width: 100%; height: 100%; border-radius: 12px; }
   .brand-name { font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
   .brand-sub { font-size: 12px; color: var(--muted); }
   .badge {
@@ -228,10 +228,7 @@
   <header class="topbar">
     <div class="brand">
       <span class="mark" aria-hidden="true">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B0D12" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="8 6 3 12 8 18"></polyline>
-          <polyline points="16 6 21 12 16 18"></polyline>
-        </svg>
+        <img src="{{ url_for('static', filename='logo.svg') }}" alt="" width="40" height="40">
       </span>
       <div>
         <div class="brand-name">Autonomous AI Coding Agent</div>
